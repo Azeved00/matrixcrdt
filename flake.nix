@@ -35,37 +35,10 @@
                 ];
 
                 shellHook = ''
-                    alias search_todo="find ${ROOT}/counter -name '*.rs' -print0 | xargs -0 grep -H -n \"todo\""
-                    alias search_error="find ${ROOT}/counter -name '*.rs' -print0 | xargs -0 grep -H -n \"error!\""
-                    alias todo="search_todo && search_error"
-
-                    debug() {
-                        RUST_LOG=info cargo run --bin $1
-                    }
                     build() {
-                        cargo build --bin $1 --color=always 2>&1 | less
-                    }
-                    bench() {
-                        pushd $ROOT
-                        nix develop .#python --impure -c bash -c "$ROOT/scripts/main.sh $1"
-                        popd
+                        cargo build --color=always 2>&1 | less
                     }
                 '';
-            };
-
-            python = pkgs.mkShell {
-                inherit ROOT;
-                name = "Python thingy";
-
-                buildInputs = with pkgs; [
-                    (python3.withPackages (pp: with pp;[
-                        pandas
-                        matplotlib
-                        pyqtwebengine
-                    ]))
-                ];
-
-                shellHook = '''';
             };
         };
     };

@@ -7,10 +7,7 @@
 /// of the bot. You will see that it sends the `Ping` event and upon receiving
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
-use std::sync::Arc;
-use tokio::sync::Mutex;
-
-use matrix_acrdt::crdt::Crdt;
+use matrix_acrdt::state::Store;
 use matrix_acrdt::tui::print_menu;
 
 
@@ -28,12 +25,12 @@ async fn main() -> anyhow::Result<()> {
     //tracing_subscriber::fmt::init();
 
     // parse the command line for homeserver, username and password
-    let (homeserver_url, username, password) =
-        match (env::args().nth(1), env::args().nth(2), env::args().nth(3)) {
-            (Some(a), Some(b), Some(c)) => (a, b, c),
+    let (username, password) =
+        match (env::args().nth(1), env::args().nth(2)) {
+            (Some(a), Some(b)) => (a, b),
             _ => {
                 eprintln!(
-                    "Usage: {} <homeserver_url> <username> <password>",
+                    "Usage: {} <username> <password>",
                     env::args().next().unwrap()
                 );
                 // exit if missing
@@ -42,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         };
 
 
-    let crdt = Crdt::login(homeserver_url, &username, &password).await;
+    let store = Store::new(&username, &password).await;
 
      loop {
         print_menu();
@@ -53,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
         match option {
             1 => {
                 println!("sending update");
-                crdt.send_update_event().await;
+                store.send_update().await;
             },
             2 => { break; },
             _ => { break; },
