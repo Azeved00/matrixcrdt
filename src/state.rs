@@ -69,18 +69,17 @@ impl Store {
 
         Store{
             map: BTreeMap::new(),
-            store_id: 1,
             network,
         }
     }
 
-    /*pub async fn update(&mut self, cmd: StoreCommand) {
+    pub async fn send_update(&mut self, cmd: StoreCommand) {
         let content = UpdateEventContent {
             cmd,
             author: self.network.user.clone(),
         };
         self.network.room.send(content).await.unwrap();
-    }*/
+    }
 
     pub fn on_update(&mut self, cmd: StoreCommand) {
         //send an update

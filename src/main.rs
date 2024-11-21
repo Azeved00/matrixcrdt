@@ -7,7 +7,7 @@
 /// of the bot. You will see that it sends the `Ping` event and upon receiving
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
-use matrix_acrdt::state::Store;
+use matrix_acrdt::state::{Store, StoreCommand};
 use matrix_acrdt::tui::print_menu;
 
 
@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         };
 
 
-    let store = Store::new(&username, &password).await;
+    let mut store = Store::new(&username, &password).await;
 
      loop {
         print_menu();
@@ -50,7 +50,8 @@ async fn main() -> anyhow::Result<()> {
         match option {
             1 => {
                 println!("sending update");
-                store.send_update().await;
+                store.send_update(StoreCommand::Add(1,1))
+                    .await;
             },
             2 => { break; },
             _ => { break; },
