@@ -1,20 +1,20 @@
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
-};
+//use std::sync::{
+//    atomic::{AtomicU64, Ordering},
+//    Arc,
+//};
 
 use matrix_sdk::{
     config::SyncSettings,
     //event_handler::Ctx,
-    ruma::events::{
-        macros::EventContent,
-        room::{
+    //ruma::events::{
+        //macros::EventContent,
+        //room::{
 //            member::StrippedRoomMemberEvent,
-            message::{MessageType, OriginalSyncRoomMessageEvent},
-        },
-    },
-    ruma::{room_id, RoomId ,RoomAliasId},
-    Client, Room,  RoomState,
+            //message::{MessageType, OriginalSyncRoomMessageEvent},
+        //},
+    //},
+    ruma::RoomId,
+    Client, Room,
 };
 //use tokio::time::{sleep, Duration};
 
@@ -22,6 +22,7 @@ use matrix_sdk::{
 
 pub struct Crdt {
     pub room: Room,
+    pub user: String,
     //pub client: Client,
     //pub sync_settings: SyncSettings,
 }
@@ -61,6 +62,7 @@ impl Crdt {
 
 
         return Crdt{
+            user: username.to_string(),
             room, //client, sync_settings: settings
         };
     }

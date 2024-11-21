@@ -4,23 +4,25 @@ use std::{
 };
 use matrix_sdk::{
     //config::SyncSettings,
-    event_handler::Ctx,
+    //event_handler::Ctx,
     ruma::events::{
         macros::EventContent,
         room::{
-//            member::StrippedRoomMemberEvent,
-            //message::{MessageType, OriginalSyncRoomMessageEvent},
+            member::StrippedRoomMemberEvent,
+            message::{
+                SyncRoomMessageEvent, 
+                OriginalSyncRoomMessageEvent
+            },
         },
     },
     //ruma::{room_id, RoomId ,RoomAliasId},
-    Client, Room,  RoomState,
+    Room,  RoomState,
 };
 use serde::{Deserialize, Serialize};
 use crate::crdt::Crdt;
 
 pub struct Store {
     map: BTreeMap<u64, u64>,
-    store_id: u8,
     network: Crdt,
 }
 
@@ -41,10 +43,12 @@ pub struct UpdateEventContent {
     cmd: StoreCommand,
     author: String,
 }
+/*
 #[derive(Debug, Default, Clone)]
 pub struct CustomContext {
     ping_counter: Arc<BTreeMap<u64,u64>>,
 }
+*/
 
 impl Store {
     const ROOM_ID : &str = "!GXNPdYSjbFRDdXdyRK:matrix.org";
@@ -61,7 +65,7 @@ impl Store {
             username, 
             password).await;
 
-        network.room.add_event_handler(on_ping_event);
+        network.room.add_event_handler(on_update);
 
         Store{
             map: BTreeMap::new(),
@@ -70,13 +74,13 @@ impl Store {
         }
     }
 
-    pub async fn update(&mut self, cmd: StoreCommand) {
+    /*pub async fn update(&mut self, cmd: StoreCommand) {
         let content = UpdateEventContent {
             cmd,
-            author: "snow".to_string(),
+            author: self.network.user.clone(),
         };
         self.network.room.send(content).await.unwrap();
-    }
+    }*/
 
     pub fn on_update(&mut self, cmd: StoreCommand) {
         //send an update
@@ -102,10 +106,13 @@ impl Store {
     }
 }
 
-async fn on_ping_event(event: SyncUpdateEvent, room: Room) {
+async fn on_update(event: SyncUpdateEvent, room: Room) {
     if room.state() != RoomState::Joined {
         return;
     }
-
-    println!("update received {:}", event.author);
+    
+    let original = event.as_original().expect("Cant get the original of received event");
+    
+    
+    println!("update received {:}", original.content.author);
 }
