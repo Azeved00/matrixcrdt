@@ -1,8 +1,8 @@
 use std::{
     collections::BTreeMap,
     sync::{RwLock,Arc},
-    io::stdin,
 };
+use serde::{Deserialize, Serialize};
 use matrix_sdk::{
     config::SyncSettings,
     event_handler::Ctx,
@@ -20,21 +20,7 @@ use matrix_sdk::{
     Room,  RoomState,
     Client
 };
-use serde::{Deserialize, Serialize};
-
-pub struct Store {
-    pub room: Room,
-    pub user: String,
-    pub map: Arc<RwLock<BTreeMap<u64,u64>>>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum StoreCommand{
-    Add(u64, u64),
-    Remove(u64, u64),
-    Delete(u64),
-}
-
+use crate::{StoreCommand, Hash};
 
 
 // We use ruma to define our custom events. Just declare the events content
@@ -45,11 +31,15 @@ pub struct UpdateEventContent {
     cmd: StoreCommand,
     author: String,
     version: u8,
+    //hash: Hash,
+    //parents: Vec<Hash>
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct MapContext{
-    map: Arc<RwLock<BTreeMap<u64,u64>>>,
+pub struct Store {
+    pub room: Option<Room>,
+    pub client: Arc<RwLock<Client>>,
+    pub user: String,
+    pub map: Arc<RwLock<BTreeMap<u64,u64>>>,
 }
 
 impl Store {
@@ -83,27 +73,9 @@ impl Store {
         client.add_event_handler(on_update);
 
 
-        println!("First Sync");
-        let response = client.sync_once(Default::default()).await.unwrap();
-
-        println!("Timeline");
-        println!("{:#?}", response.rooms
-            .join.get(room_id!("!GXNPdYSjbFRDdXdyRK:matrix.org"))
-            .unwrap()
-            .timeline.events);
-        let settings = SyncSettings::default().token(response.next_batch);
-
-        println!("Getting crdt room");
-        let oroom_id = RoomId::parse(Self::ROOM_ID).expect("failed to parse room id");
-        let room = client.get_room(&oroom_id).expect("Room not found"); 
-
-
-        tokio::spawn( async move {
-            let _ = client.sync(settings.clone()).await;
-        });
-
         Store{
-            room,
+            room: None,
+            client: Arc::new(RwLock::new(client)),
             user: username.to_string(),
             map: context.map,
         }
@@ -115,7 +87,39 @@ impl Store {
             author: self.user.clone(),
             version: Self::VERSION,
         };
-        self.room.send(content).await.unwrap();
+        match &self.room {
+            Some(r) => { 
+                r.send(content).await.unwrap();
+            },
+            None => {}
+        }
+    }
+
+    pub async fn start_sync(&self) {
+        let client = self.client.write().unwrap();
+
+        let response = client.sync_once(Default::default()).await.unwrap();
+
+        /*
+        println!("Timeline");
+        println!("{:#?}", response.rooms
+            .join.get(room_id!("!GXNPdYSjbFRDdXdyRK:matrix.org"))
+            .unwrap()
+            .timeline.events);
+            */
+
+        //println!("Getting crdt room");
+        let oroom_id = RoomId::parse(Self::ROOM_ID).expect("failed to parse room id");
+        let room = client.get_room(&oroom_id).expect("Room not found"); 
+        drop(client);
+
+
+        let settings = SyncSettings::default().token(response.next_batch);
+        let client_clone = Arc::clone(&self.client);
+        tokio::spawn( async move {
+            let client = client_clone.write().unwrap();
+            let _ = client.sync(settings.clone());
+        });
     }
 
     pub fn query(&mut self, item_id: &u64) -> u64 {
@@ -126,6 +130,10 @@ impl Store {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct MapContext{
+    map: Arc<RwLock<BTreeMap<u64,u64>>>,
+}
 async fn on_update(event: SyncUpdateEvent, room: Room, mapctx: Ctx<MapContext>) {
     if room.state() != RoomState::Joined {
         return;
@@ -159,6 +167,4 @@ async fn on_update(event: SyncUpdateEvent, room: Room, mapctx: Ctx<MapContext>) 
             map.remove(&id);
         },
     }
-
-    println!("update received {:}", original.content.author);
 }
