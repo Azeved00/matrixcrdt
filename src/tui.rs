@@ -22,6 +22,13 @@ use crate::{
     store_crdt::{Store, SyncUpdateEvent},
 };
 
+enum StateMachine{
+    Main,
+    Credentials,
+    Update,
+    Query
+}
+
 
 pub struct TerminalUI {
     stdout: Stdout,
@@ -30,7 +37,9 @@ pub struct TerminalUI {
     main_ui_width: u16,
     notification_width: u16,
     notifications: Arc<Mutex<Vec<String>>>,
-    store: Store,
+    store: Arc<Store>,
+
+    sm: StateMachine,
 }
 
 impl TerminalUI {
@@ -48,7 +57,12 @@ impl TerminalUI {
         client.add_event_handler(self::on_update);
         drop(client);
 
-        s.start_sync();
+        let store_ref = Arc::new(s);
+        let store_ref_2 = store_ref.clone();
+        tokio::spawn( async move {
+            store_ref_2.send_update(StoreCommand::Add(1,1)).await;
+            store_ref_2.start_sync().await;
+        });
         
 
         Ok(Self {
@@ -56,16 +70,9 @@ impl TerminalUI {
             width, height,
             main_ui_width, notification_width,
             notifications: context.list,
-            store: s,
+            store: store_ref,
+            sm: StateMachine::Main,
         })
-    }
-
-    /// Start the notification thread to generate periodic notifications.
-    pub fn notify(&self, notification: String) -> Result<(), Error> {
-        self.notifications.lock().unwrap()
-            .push(format!("! {}", notification));
-
-        Ok(())
     }
 
     /// Main application loop for rendering the UI.
@@ -73,28 +80,58 @@ impl TerminalUI {
         terminal::enable_raw_mode()?; // Enable raw mode for full control over the terminal
 
         loop {
-            // Check for terminal resizing
             let (new_width, new_height) = terminal::size()?;
             if new_width != self.width || new_height != self.height {
                 self.resize(new_width, new_height);
             }
 
-            // Clear the screen
             self.stdout.execute(Clear(ClearType::All))?;
-
-            // Draw the main UI and notifications
             self.draw_main_ui()?;
             self.draw_notifications()?;
             
-            if event::poll(std::time::Duration::from_millis(500))? {
-                if let Event::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    ..
-                }) = event::read()?
-                {
-                    break; // Exit on 'q' key press
+            match self.sm{
+                StateMachine::Main => {
+                    if event::poll(std::time::Duration::from_millis(500))? {
+                        match event::read()? {
+                            Event::Key(KeyEvent {code: KeyCode::Char('q'),..}) => {break;}
+                            Event::Key(KeyEvent {code: KeyCode::Char('1'),..}) => {self.sm = StateMachine::Update;}
+                            Event::Key(KeyEvent {code: KeyCode::Char('2'),..}) => {self.sm = StateMachine::Update;}
+                            _ => {}
+                        }
+                    }
+                },
+                StateMachine::Update => {
+                    self.sm = StateMachine::Main;
+                    let store_ref = self.store.clone();
+                    tokio::spawn( async move {
+                        store_ref.send_update(StoreCommand::Add(1,1)).await;
+                    });
+                },
+                StateMachine::Credentials => {
+                    if event::poll(std::time::Duration::from_millis(500))? {
+                        if let Event::Key(KeyEvent {
+                            code: KeyCode::Char('q'),
+                            ..
+                        }) = event::read()?
+                        {
+                            break; // Exit on 'q' key press
+                        }
+                    }
+                },
+                StateMachine::Query => {
+                    if event::poll(std::time::Duration::from_millis(500))? {
+                        if let Event::Key(KeyEvent {
+                            code: KeyCode::Char('q'),
+                            ..
+                        }) = event::read()?
+                        {
+                            break; // Exit on 'q' key press
+                        }
+                    }
                 }
             }
+
+
 
             // Simulate some main loop logic
             thread::sleep(Duration::from_millis(100));
@@ -111,7 +148,7 @@ impl TerminalUI {
         self.main_ui_width = width - self.notification_width;
     }
 
-    /// Draw the main UI section.
+    /// Draw the maCredentialsin UI section.
     fn draw_main_ui(&mut self) -> Result<(), Error> {
         // Draw a border for the main UI area
         for y in 0..self.height {
@@ -127,13 +164,38 @@ impl TerminalUI {
                 self.stdout.write_all(b"|")?;
             }
         }
+        
+        match self.sm {
+            StateMachine::Main => {
+                self.stdout.execute(cursor::MoveTo(2, 2))?;
+                self.stdout.write_all(b"Main Menu")?;
+                self.stdout.execute(cursor::MoveTo(2, 3))?;
+                self.stdout.write_all(b"1: update")?;
+                self.stdout.execute(cursor::MoveTo(2, 4))?;
+                self.stdout.write_all(b"2: query")?;
+                self.stdout.execute(cursor::MoveTo(2, 5))?;
+                self.stdout.write_all(b"3: print dag")?;
+            },
+            StateMachine::Update => {
+                self.stdout.execute(cursor::MoveTo(2, 2))?;
+                self.stdout.write_all(b"Update Menu")?;
+            },
+            StateMachine::Credentials => {
+                self.stdout.execute(cursor::MoveTo(2, 2))?;
+                self.stdout.write_all(b"Credentials")?;
+            },
+            StateMachine::Query => {
+                self.stdout.execute(cursor::MoveTo(2, 2))?;
+                self.stdout.write_all(b"Query Menu")?;
 
-        self.stdout.execute(cursor::MoveTo(2, 2))?;
-        self.stdout.write_all(b"1: update\n")?;
-        self.stdout.execute(cursor::MoveTo(2, 3))?;
-        self.stdout.write_all(b"2: query\n")?;
-        self.stdout.execute(cursor::MoveTo(2, 4))?;
-        self.stdout.write_all(b"3: print dag\n")?;
+                let res = self.store.query(&1);
+                self.stdout.execute(cursor::MoveTo(2, 3))?;
+                let output = format!("Query Result: {}", res);
+                self.stdout.write_all(&output.into_bytes())?;
+            }
+
+        }
+
         self.stdout.execute(cursor::MoveTo(2, self.height-2))?;
         self.stdout.write_all(b"q: exit the program\n")?;
 
@@ -182,8 +244,6 @@ pub struct NotificationContext{
 }
 
 pub async fn on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<NotificationContext>){
-
     let mut list = ctx.list.lock().unwrap();
     list.push("new event".to_string());
-    
 }

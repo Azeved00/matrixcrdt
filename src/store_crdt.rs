@@ -81,7 +81,7 @@ impl Store {
         }
     }
 
-    pub async fn send_update(&mut self, cmd: StoreCommand) {
+    pub async fn send_update(&self, cmd: StoreCommand) {
         let content = UpdateEventContent {
             cmd,
             author: self.user.clone(),
@@ -122,7 +122,7 @@ impl Store {
         });
     }
 
-    pub fn query(&mut self, item_id: &u64) -> u64 {
+    pub fn query(&self, item_id: &u64) -> u64 {
         let map = self.map.read().unwrap();
 
         let result = map.get(item_id).unwrap_or(&0).clone();
