@@ -8,16 +8,15 @@
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
 use matrix_acrdt::{
-    StoreCommand,
     store_crdt::Store,
     tui::TerminalUI
 };
 
 
 use std::{
-    io,
     env,
-    process::exit
+    process::exit,
+    sync::Arc,
 };
 
 
@@ -39,10 +38,16 @@ async fn main() -> anyhow::Result<()> {
             }
         };
 
-    let mut store = Store::new(&username, &password).await;
-    let mut ui = TerminalUI::new(store)?;
-    let _ = ui.run();
+    let store = Store::new(&username, &password).await;
+    let store_ref=Arc::new(store);
+    let mut ui = TerminalUI::new(Arc::clone(&store_ref)).await?;
 
+    let store_ref_2=Arc::clone(&store_ref);
+    tokio::spawn(async move {
+        store_ref_2.start_sync().await;
+    });
+
+    let _ = ui.run();
 
     Ok(())
 }

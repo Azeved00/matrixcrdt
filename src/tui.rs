@@ -8,11 +8,12 @@ use crossterm::{
 use matrix_sdk::{
     room::Room,
     event_handler::Ctx,
+    //config::SyncSettings,
 };
 use std::{
     io,
     io::{Stdout, Write, Error},
-    sync::{Arc, Mutex},
+    sync::{Arc,Mutex},
     thread,
     time::Duration,
 };
@@ -22,7 +23,7 @@ use crate::{
     store_crdt::{Store, SyncUpdateEvent},
 };
 
-enum StateMachine{
+pub enum StateMachine{
     Main,
     Credentials,
     Update,
@@ -44,41 +45,33 @@ pub struct TerminalUI {
 
 impl TerminalUI {
     /// Create a new instance of `TerminalUI`.
-    pub fn new(s: Store) -> Result<Self, Error>
+    pub async fn new(s: Arc<Store>) -> Result<Self, Error>
     {
         let stdout = std::io::stdout();
         let (width, height) = terminal::size()?;
         let notification_width = (width as f32 * 0.3) as u16;
         let main_ui_width = width - notification_width;
 
-        let  context = NotificationContext::default();
-        let client = s.client.write().unwrap();
-        client.add_event_handler_context(context.clone());
-        client.add_event_handler(self::on_update);
-        drop(client);
+        let context = Arc::new(Mutex::new(vec!["Messages".to_string()]));
+        let list_ref = Arc::clone(&context);
 
-        let store_ref = Arc::new(s);
-        let store_ref_2 = store_ref.clone();
-        tokio::spawn( async move {
-            store_ref_2.send_update(StoreCommand::Add(1,1)).await;
-            store_ref_2.start_sync().await;
-        });
-        
+        s.room.add_event_handler(self::on_update);
+        let s_ref = Arc::clone(&s);
+        let client = s_ref.client.write().await;
+        client.add_event_handler_context(context);
 
         Ok(Self {
             stdout,
             width, height,
             main_ui_width, notification_width,
-            notifications: context.list,
-            store: store_ref,
+            notifications: list_ref,
+            store: s,
             sm: StateMachine::Main,
         })
     }
 
     /// Main application loop for rendering the UI.
     pub fn run(&mut self) -> Result<(), io::Error> {
-        terminal::enable_raw_mode()?; // Enable raw mode for full control over the terminal
-
         loop {
             let (new_width, new_height) = terminal::size()?;
             if new_width != self.width || new_height != self.height {
@@ -89,20 +82,21 @@ impl TerminalUI {
             self.draw_main_ui()?;
             self.draw_notifications()?;
             
+            terminal::enable_raw_mode()?; // Enable raw mode for full control over the terminal
             match self.sm{
                 StateMachine::Main => {
                     if event::poll(std::time::Duration::from_millis(500))? {
                         match event::read()? {
                             Event::Key(KeyEvent {code: KeyCode::Char('q'),..}) => {break;}
                             Event::Key(KeyEvent {code: KeyCode::Char('1'),..}) => {self.sm = StateMachine::Update;}
-                            Event::Key(KeyEvent {code: KeyCode::Char('2'),..}) => {self.sm = StateMachine::Update;}
+                            Event::Key(KeyEvent {code: KeyCode::Char('2'),..}) => {self.sm = StateMachine::Query;}
                             _ => {}
                         }
                     }
                 },
                 StateMachine::Update => {
                     self.sm = StateMachine::Main;
-                    let store_ref = self.store.clone();
+                    let store_ref = Arc::clone(&self.store);
                     tokio::spawn( async move {
                         store_ref.send_update(StoreCommand::Add(1,1)).await;
                     });
@@ -120,22 +114,20 @@ impl TerminalUI {
                 },
                 StateMachine::Query => {
                     if event::poll(std::time::Duration::from_millis(500))? {
-                        if let Event::Key(KeyEvent {
-                            code: KeyCode::Char('q'),
-                            ..
-                        }) = event::read()?
+                        if let Event::Key(KeyEvent {code: KeyCode::Char('q'),..}) = event::read()?
                         {
-                            break; // Exit on 'q' key press
+                            self.sm = StateMachine::Main;
                         }
                     }
                 }
             }
 
-
-
             // Simulate some main loop logic
             thread::sleep(Duration::from_millis(100));
         }
+
+        self.stdout.execute(Clear(ClearType::All))?;
+        terminal::disable_raw_mode()?;
 
         Ok(())
     }
@@ -188,9 +180,9 @@ impl TerminalUI {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;
                 self.stdout.write_all(b"Query Menu")?;
 
-                let res = self.store.query(&1);
+                //let res = self.store.query(&1);
                 self.stdout.execute(cursor::MoveTo(2, 3))?;
-                let output = format!("Query Result: {}", res);
+                let output = format!("Query Result: {}", 2);
                 self.stdout.write_all(&output.into_bytes())?;
             }
 
@@ -230,6 +222,7 @@ impl TerminalUI {
                     .execute(cursor::MoveTo(start_x + 2, i as u16 + 1))?;
                 self.stdout.execute(SetForegroundColor(Color::Yellow))?;
                 self.stdout.execute(Print(notif))?;
+                self.stdout.execute(SetForegroundColor(Color::White))?;
             }
         }
 
@@ -237,13 +230,7 @@ impl TerminalUI {
     }
 }
 
-
-#[derive(Debug, Default, Clone)]
-pub struct NotificationContext{
-    list: Arc<Mutex<Vec<String>>>,
-}
-
-pub async fn on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<NotificationContext>){
-    let mut list = ctx.list.lock().unwrap();
+async fn on_update(_event: SyncUpdateEvent, _room: Room, ctx: Ctx<Arc<Mutex<Vec<String>>>>){
+    let mut list = ctx.lock().unwrap();
     list.push("new event".to_string());
 }
