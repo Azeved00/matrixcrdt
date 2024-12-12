@@ -1,9 +1,6 @@
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::sync::Arc;
+use sha3::Sha3_256;
 use tokio::sync::RwLock;
-use tokio::runtime::Runtime;
 use serde::{Deserialize, Serialize};
 use matrix_sdk::{
     config::SyncSettings,
@@ -23,40 +20,38 @@ use matrix_sdk::{
     Room,  RoomState,
     Client
 };
-use crate::StoreCommand;
+
+use crate::crdt::merkle_dag::{auth::AuthDag, node::Node, dag::QueryRecord};
+
+type DagReference = Arc<RwLock<AuthDag<Sha3_256, String>>>; 
 
 
-// We use ruma to define our custom events. Just declare the events content
-// by deriving from `EventContent` and define `ruma_events` for the metadata
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "fcup.acrdt.update", kind = MessageLike)]
 pub struct UpdateEventContent {
-    cmd: StoreCommand,
+    cmd: Node<String>,
     author: String,
     version: u8,
-    //hash: Hash,
-    //parents: Vec<Hash>
 }
 
-pub struct Store {
+pub struct CRDT
+{
     pub room: Room,
     pub client: Arc<RwLock<Client>>,
     pub user: String,
-    pub map: Arc<RwLock<BTreeMap<u64,u64>>>,
+    pub dag: DagReference,
     pub sync_settings: SyncResponse,
+
 }
 
-impl Store {
+impl CRDT
+{
     const ROOM_ID : &str = "!GXNPdYSjbFRDdXdyRK:matrix.org";
     const HOMESERVER : &str = "https://matrix.org";
-    const VERSION: u8 = 2;
+    const VERSION: u8 = 3;
 
-    pub async fn new(
-        username: &str,
-        password: &str,
-    ) -> Self {
-        //create a new Crdtzza
-
+    ///create a new Crdt
+    pub async fn new(username: &str, password: &str) -> Self {
         println!("logging in");
         let client = Client::builder()
             .homeserver_url(Self::HOMESERVER.to_string())
@@ -72,9 +67,9 @@ impl Store {
         println!("logged in as {username}");
 
 
-        let context = MapContext::default();
-        let map_ref = Arc::clone(&context.map);
-        client.add_event_handler_context(context);
+        let dag = AuthDag::new(password.into());
+        let context: DagReference = Arc::new(RwLock::new(dag));
+        client.add_event_handler_context(Arc::clone(&context));
         client.add_event_handler(self::map_on_update);
 
         let response = client.sync_once(Default::default()).await.unwrap();
@@ -82,18 +77,21 @@ impl Store {
         let oroom_id = RoomId::parse(Self::ROOM_ID).expect("failed to parse room id");
         let room = client.get_room(&oroom_id).expect("Room not found"); 
 
-        Store{
+        Self {
             room,
             client: Arc::new(RwLock::new(client)),
             user: username.to_string(),
-            map: map_ref,
+            dag: context,
             sync_settings: response,
         }
     }
 
-    pub async fn send_update(&self, cmd: StoreCommand) {
+    pub async fn send_update(&self, cmd: String) {
+        let dag= self.dag.read().await;
+        let node = dag.gen_node(cmd);
+
         let content = UpdateEventContent {
-            cmd,
+            cmd: node,
             author: self.user.clone(),
             version: Self::VERSION,
         };
@@ -111,25 +109,40 @@ impl Store {
         let _ = client.sync(settings.clone()).await;
     }
 
-    pub fn query(&self, item_id: &u64) -> u64 {
-        let result  = tokio::task::block_in_place(|| {
-           // Create a small runtime to execute the async function
+    pub fn query<F>(&self, func: F, log: Option<QueryRecord>) -> QueryRecord
+        where F: Fn(&Node<String>)
+    {
+        tokio::task::block_in_place(|| {
             let runtime = tokio::runtime::Runtime::new().unwrap();
-            runtime.block_on(async {
-                let map = self.map.read().await;
-                 map.get(item_id).unwrap_or(&0).clone()
-            })
-        });
 
-        return result;
+            runtime.block_on(async {
+                let map = self.dag.read().await;
+                map.query(func, log)
+            })
+        })
+    }
+
+    /// Pretty print function for a HashMap
+    pub fn pretty_print_dag(&self) -> String
+    {
+        tokio::task::block_in_place(|| {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+
+            runtime.block_on(async {
+                let map = self.dag.read().await;
+                let mut output = String::new();
+                output.push_str("{\n");
+                for value in map.linearize() {
+                    output.push_str(&format!("  {:#?},\n", value));
+                }
+                output.push('}');
+                output
+            })
+        })
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct MapContext{
-    map: Arc<RwLock<BTreeMap<u64,u64>>>,
-}
-async fn map_on_update(event: SyncUpdateEvent, room: Room, mapctx: Ctx<MapContext>) {
+async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference>) {
     //println!("received update");
     if room.state() != RoomState::Joined {
         return;
@@ -137,31 +150,11 @@ async fn map_on_update(event: SyncUpdateEvent, room: Room, mapctx: Ctx<MapContex
     
     let original = event.as_original()
         .expect("Cant get the original of received event");
-    if original.content.version != Store::VERSION {
+    if original.content.version != CRDT::VERSION {
         return
     }
 
 
-    let mut map = mapctx.map.write().await;
-    
-    //send an update
-    match original.content.cmd {
-        StoreCommand::Add(id, num) => {
-            if let Some(x) = map.get_mut(&id) {
-                *x += num ;
-            } else {
-                map.insert(id, num);
-            }
-        },
-        StoreCommand::Remove(id, num) => {
-            if let Some(x) = map.get_mut(&id) {
-                *x -= num ;
-            } else {
-                map.insert(id, num);
-            }
-        },
-        StoreCommand::Delete(id) => {
-            map.remove(&id);
-        },
-    }
+    let mut dag = ctx.write().await;
+    dag.add_node(original.content.cmd.clone());
 }

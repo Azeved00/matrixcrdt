@@ -1,6 +1,6 @@
 ///  This is an example showcasing how to build a very simple bot with custom
 /// events  using the matrix-sdk. To try it, you need a rust build setup, then
-/// you can run: `cargo run  -- <homeserver_url> <user> <password>`
+/// you can run: `cargo run <user> <password>`
 ///
 /// Use a second client to open a DM to your bot or invite them into some room.
 /// You should see it automatically join. Then post `!ping`  and observe the log
@@ -8,7 +8,7 @@
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
 use matrix_acrdt::{
-    store_crdt::Store,
+    crdt::crdt::CRDT,
     tui::TerminalUI
 };
 
@@ -38,14 +38,15 @@ async fn main() -> anyhow::Result<()> {
             }
         };
 
-    let store = Store::new(&username, &password).await;
+    let store = CRDT::new(&username, &password).await;
     let store_ref=Arc::new(store);
+
     let mut ui = TerminalUI::new(Arc::clone(&store_ref)).await?;
 
-    let store_ref_2=Arc::clone(&store_ref);
     tokio::spawn(async move {
-        store_ref_2.start_sync().await;
+        store_ref.start_sync().await;
     });
+
 
     let _ = ui.run();
 

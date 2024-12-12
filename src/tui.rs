@@ -5,11 +5,11 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
     ExecutableCommand,
 };
-use matrix_sdk::{
-    room::Room,
-    event_handler::Ctx,
+//use matrix_sdk::{
+  //  room::Room,
+    //event_handler::Ctx,
     //config::SyncSettings,
-};
+//};
 use std::{
     io,
     io::{Stdout, Write, Error},
@@ -19,15 +19,16 @@ use std::{
 };
 
 use crate::{
-    StoreCommand,
-    store_crdt::{Store, SyncUpdateEvent},
+    crdt::crdt::CRDT,
+    crdt::merkle_dag::dag::QueryRecord,
 };
 
 pub enum StateMachine{
     Main,
     Credentials,
     Update,
-    Query
+    Query,
+    PrettyPrint,
 }
 
 
@@ -38,15 +39,16 @@ pub struct TerminalUI {
     main_ui_width: u16,
     notification_width: u16,
     notifications: Arc<Mutex<Vec<String>>>,
-    store: Arc<Store>,
+    store: Arc<CRDT>,
+    query_log: QueryRecord,
 
     sm: StateMachine,
+    update_input: String,
 }
 
 impl TerminalUI {
     /// Create a new instance of `TerminalUI`.
-    pub async fn new(s: Arc<Store>) -> Result<Self, Error>
-    {
+    pub async fn new(s: Arc<CRDT>) -> Result<Self, Error> {
         let stdout = std::io::stdout();
         let (width, height) = terminal::size()?;
         let notification_width = (width as f32 * 0.3) as u16;
@@ -55,10 +57,10 @@ impl TerminalUI {
         let context = Arc::new(Mutex::new(vec!["Messages".to_string()]));
         let list_ref = Arc::clone(&context);
 
-        s.room.add_event_handler(self::on_update);
-        let s_ref = Arc::clone(&s);
-        let client = s_ref.client.write().await;
-        client.add_event_handler_context(context);
+        //s.room.add_event_handler(self::on_update);
+        //let s_ref = Arc::clone(&s);
+        //let client = s_ref.client.write().await;
+        //client.add_event_handler_context(context);
 
         Ok(Self {
             stdout,
@@ -67,7 +69,39 @@ impl TerminalUI {
             notifications: list_ref,
             store: s,
             sm: StateMachine::Main,
+            query_log: Default::default(),
+            update_input: "".to_string()
         })
+    }
+
+    pub fn handle_update_input(&mut self) {
+        if let Ok(Event::Key(key_event)) = event::read() {
+            match key_event.code {
+                KeyCode::Char(c) => {
+                    self.update_input.push(c);
+                }
+                KeyCode::Backspace => {
+                    if !self.update_input.is_empty() {
+                        self.update_input.pop();
+                    }
+                }
+                KeyCode::Enter => {
+                    self.sm = StateMachine::Main;
+
+                    let store_ref = Arc::clone(&self.store);
+                    let input = self.update_input.clone();
+                    self.update_input.clear();
+                    tokio::spawn( async move {
+                        store_ref.send_update(input).await;
+                    });
+                }
+                KeyCode::Esc => {
+                    self.sm = StateMachine::Main;
+                    // Exit if Escape is pressed
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Main application loop for rendering the UI.
@@ -77,10 +111,6 @@ impl TerminalUI {
             if new_width != self.width || new_height != self.height {
                 self.resize(new_width, new_height);
             }
-
-            self.stdout.execute(Clear(ClearType::All))?;
-            self.draw_main_ui()?;
-            self.draw_notifications()?;
             
             terminal::enable_raw_mode()?; // Enable raw mode for full control over the terminal
             match self.sm{
@@ -90,16 +120,13 @@ impl TerminalUI {
                             Event::Key(KeyEvent {code: KeyCode::Char('q'),..}) => {break;}
                             Event::Key(KeyEvent {code: KeyCode::Char('1'),..}) => {self.sm = StateMachine::Update;}
                             Event::Key(KeyEvent {code: KeyCode::Char('2'),..}) => {self.sm = StateMachine::Query;}
+                            Event::Key(KeyEvent {code: KeyCode::Char('3'),..}) => {self.sm = StateMachine::PrettyPrint;}
                             _ => {}
                         }
                     }
                 },
                 StateMachine::Update => {
-                    self.sm = StateMachine::Main;
-                    let store_ref = Arc::clone(&self.store);
-                    tokio::spawn( async move {
-                        store_ref.send_update(StoreCommand::Add(1,1)).await;
-                    });
+                    self.handle_update_input();
                 },
                 StateMachine::Credentials => {
                     if event::poll(std::time::Duration::from_millis(500))? {
@@ -119,8 +146,20 @@ impl TerminalUI {
                             self.sm = StateMachine::Main;
                         }
                     }
+                },
+                StateMachine::PrettyPrint => {
+                    if event::poll(std::time::Duration::from_millis(500))? {
+                        if let Event::Key(KeyEvent {code: KeyCode::Char('q'),..}) = event::read()?
+                        {
+                            self.sm = StateMachine::Main;
+                        }
+                    }
                 }
             }
+
+            self.stdout.execute(Clear(ClearType::All))?;
+            self.draw_main_ui()?;
+            self.draw_notifications()?;
 
             // Simulate some main loop logic
             thread::sleep(Duration::from_millis(100));
@@ -171,6 +210,8 @@ impl TerminalUI {
             StateMachine::Update => {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;
                 self.stdout.write_all(b"Update Menu")?;
+                self.stdout.execute(cursor::MoveTo(2, 3))?;
+                self.stdout.execute(Print(self.update_input.clone()));
             },
             StateMachine::Credentials => {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;
@@ -180,12 +221,31 @@ impl TerminalUI {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;
                 self.stdout.write_all(b"Query Menu")?;
 
-                //let res = self.store.query(&1);
-                self.stdout.execute(cursor::MoveTo(2, 3))?;
-                let output = format!("Query Result: {}", 2);
-                self.stdout.write_all(&output.into_bytes())?;
-            }
+                let notifications = Arc::clone(&self.notifications);
+                let log = self.store.query(|node| {
+                    let mut not_lock = notifications.lock().unwrap();
+                    not_lock.push(node.data.clone());
+                }, Some(self.query_log.clone()));
 
+                self.query_log = log;
+                self.stdout.execute(cursor::MoveTo(2, 3))?;
+                let output = format!("Query Done");
+                self.stdout.write_all(&output.into_bytes())?;
+            },
+            StateMachine::PrettyPrint => {
+                self.stdout.execute(cursor::MoveTo(2, 2))?;
+                let pretty_map = self.store.pretty_print_dag();
+                for c in pretty_map.chars() {
+                    if c == '\n' {
+                        self.stdout.execute(
+                            cursor::MoveTo(2, crossterm::cursor::position()?.1 + 1))?;
+                    } else {
+                        // Print the character normally
+                        self.stdout.execute(Print(c))?;
+                        self.stdout.flush()?; // Flush the output to ensure immediate rendering
+                    }
+                }
+            }
         }
 
         self.stdout.execute(cursor::MoveTo(2, self.height-2))?;
@@ -230,7 +290,3 @@ impl TerminalUI {
     }
 }
 
-async fn on_update(_event: SyncUpdateEvent, _room: Room, ctx: Ctx<Arc<Mutex<Vec<String>>>>){
-    let mut list = ctx.lock().unwrap();
-    list.push("new event".to_string());
-}
