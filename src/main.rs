@@ -8,7 +8,7 @@
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
 use matrix_acrdt::{
-    crdt::crdt::CRDT,
+    auth_dag::AuthDag,
     tui::TerminalUI
 };
 
@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
             }
         };
 
-    let store = CRDT::new(&username, &password).await;
+    let store = AuthDag::new(&username, &password).await;
     let store_ref=Arc::new(store);
 
     let mut ui = TerminalUI::new(Arc::clone(&store_ref)).await?;

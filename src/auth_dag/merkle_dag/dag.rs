@@ -33,8 +33,7 @@ pub struct MerkleDag<O>
 }
 
 #[derive(Clone, Default)]
-pub struct QueryRecord
-{
+pub struct QueryRecord {
     set: HashSet<Hash>
 }
 

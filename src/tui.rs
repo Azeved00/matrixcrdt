@@ -19,8 +19,8 @@ use std::{
 };
 
 use crate::{
-    crdt::crdt::CRDT,
-    crdt::merkle_dag::dag::QueryRecord,
+    auth_dag::AuthDag,
+    auth_dag::merkle_dag::dag::QueryRecord,
 };
 
 pub enum StateMachine{
@@ -39,7 +39,7 @@ pub struct TerminalUI {
     main_ui_width: u16,
     notification_width: u16,
     notifications: Arc<Mutex<Vec<String>>>,
-    store: Arc<CRDT>,
+    store: Arc<AuthDag>,
     query_log: QueryRecord,
 
     sm: StateMachine,
@@ -48,7 +48,7 @@ pub struct TerminalUI {
 
 impl TerminalUI {
     /// Create a new instance of `TerminalUI`.
-    pub async fn new(s: Arc<CRDT>) -> Result<Self, Error> {
+    pub async fn new(s: Arc<AuthDag>) -> Result<Self, Error> {
         let stdout = std::io::stdout();
         let (width, height) = terminal::size()?;
         let notification_width = (width as f32 * 0.3) as u16;
@@ -211,7 +211,7 @@ impl TerminalUI {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;
                 self.stdout.write_all(b"Update Menu")?;
                 self.stdout.execute(cursor::MoveTo(2, 3))?;
-                self.stdout.execute(Print(self.update_input.clone()));
+                self.stdout.execute(Print(self.update_input.clone()))?;
             },
             StateMachine::Credentials => {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;

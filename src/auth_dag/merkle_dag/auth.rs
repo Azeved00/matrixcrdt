@@ -15,7 +15,7 @@ use super::{
 };
 
 #[derive(Clone)]
-pub struct AuthDag<D:Digest, O> 
+pub struct AuthMerkleDag<D:Digest, O> 
   where O: Clone, O: Into<Vec<u8>>, O: Debug,
         D: CoreProxy,
         D::Core: HashMarker + 
@@ -32,7 +32,7 @@ pub struct AuthDag<D:Digest, O>
 }
 
 
-impl<D: Digest, O> AuthDag<D, O> 
+impl<D: Digest, O> AuthMerkleDag<D, O> 
     where O: Clone, O: Into<Vec<u8>>, O: Debug,
         D: CoreProxy,
         D::Core: HashMarker + 
@@ -120,7 +120,7 @@ impl<D: Digest, O> AuthDag<D, O>
     }
 }
 
-impl<D: Digest,O>Debug for AuthDag<D, O> 
+impl<D: Digest,O>Debug for AuthMerkleDag<D, O> 
     where O: Clone, O: Into<Vec<u8>>, O:Debug,
         D: CoreProxy,
         D::Core: HashMarker + 

@@ -21,30 +21,30 @@ use matrix_sdk::{
     Client
 };
 
-use crate::crdt::merkle_dag::{auth::AuthDag, node::Node, dag::QueryRecord};
+use crate::auth_dag::merkle_dag::{auth::AuthMerkleDag, node::Node, dag::QueryRecord};
 
-type DagReference = Arc<RwLock<AuthDag<Sha3_256, String>>>; 
+type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, String>>>; 
 
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "fcup.acrdt.update", kind = MessageLike)]
-pub struct UpdateEventContent {
+struct UpdateEventContent {
     cmd: Node<String>,
     author: String,
     version: u8,
 }
 
-pub struct CRDT
+pub struct AuthDag
 {
-    pub room: Room,
-    pub client: Arc<RwLock<Client>>,
-    pub user: String,
-    pub dag: DagReference,
-    pub sync_settings: SyncResponse,
+    room: Room,
+    client: Arc<RwLock<Client>>,
+    user: String,
+    dag: DagReference,
+    sync_settings: SyncResponse,
 
 }
 
-impl CRDT
+impl AuthDag
 {
     const ROOM_ID : &str = "!GXNPdYSjbFRDdXdyRK:matrix.org";
     const HOMESERVER : &str = "https://matrix.org";
@@ -67,7 +67,7 @@ impl CRDT
         println!("logged in as {username}");
 
 
-        let dag = AuthDag::new(password.into());
+        let dag = AuthMerkleDag::new(password.into());
         let context: DagReference = Arc::new(RwLock::new(dag));
         client.add_event_handler_context(Arc::clone(&context));
         client.add_event_handler(self::map_on_update);
@@ -150,7 +150,7 @@ async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference
     
     let original = event.as_original()
         .expect("Cant get the original of received event");
-    if original.content.version != CRDT::VERSION {
+    if original.content.version != AuthDag::VERSION {
         return
     }
 
