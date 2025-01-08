@@ -294,8 +294,8 @@ impl<O> MerkleDag<O>
         self.dag.get(hash)
     }
 
-    fn query_head<F>(&self,func: &F, record:&QueryRecord, head: &Node<O>)
-        where F: Fn(&Node<O>)     
+    fn query_head<F>(&self,mut func:F, record:&QueryRecord, head: &Node<O>)
+        where F: FnMut(&Node<O>)     
     {
         let mut queue:VecDeque<&Node<O>> = VecDeque::new();
         queue.push_back(head);
@@ -323,8 +323,8 @@ impl<O> MerkleDag<O>
     /// A head node being included in the dag means that 
     /// every node that is a parent or parent of a parent of that head
     /// will be included in the return dag
-    pub fn query<F>(&self, func: F,orecord: Option<QueryRecord>) -> QueryRecord
-        where F: Fn(&Node<O>)
+    pub fn query<F>(&self, mut func: F,orecord: Option<QueryRecord>) -> QueryRecord
+        where F: FnMut(&Node<O>)
     {
         let record = match orecord {
             None => QueryRecord { set: HashSet::new() },
@@ -336,7 +336,7 @@ impl<O> MerkleDag<O>
                 continue;
             }
 
-            self.query_head(&func, &record, &node);
+            self.query_head(&mut func, &record, &node);
         }
 
         let new_set :HashSet<Hash> = self.heads.keys().cloned().collect();

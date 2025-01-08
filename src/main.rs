@@ -7,16 +7,13 @@
 /// of the bot. You will see that it sends the `Ping` event and upon receiving
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
-use matrix_acrdt::{
-    auth_dag::AuthDag,
-    tui::TerminalUI
-};
+use matrix_acrdt::auth_dag::CRDT;
 
 
 use std::{
+    io,
     env,
     process::exit,
-    sync::Arc,
 };
 
 
@@ -37,18 +34,52 @@ async fn main() -> anyhow::Result<()> {
                 exit(1)
             }
         };
+    
+    let mut store = CRDT::new(&username, &password).await;
 
-    let store = AuthDag::new(&username, &password).await;
-    let store_ref=Arc::new(store);
+    loop {
+        println!("Choose an option:");
+        println!("1. Update");
+        println!("2. Query");
+        println!("3. Pretty Print Dag");
+        println!("4. Pretty Print Automerge Doc");
+        println!("Enter your choice (or type 'q' to quit):");
 
-    let mut ui = TerminalUI::new(Arc::clone(&store_ref)).await?;
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read input");
 
-    tokio::spawn(async move {
-        store_ref.start_sync().await;
-    });
+        let input = input.trim();
+        if input.eq_ignore_ascii_case("q") {
+            println!("Exiting. Goodbye!");
+            break;
+        }
+
+        match input.parse::<u32>() {
+            Ok(1) => {
+                store.update("new update".to_string()).await;
+            }
+            Ok(2) => {
+                store.query();
+            }
+            Ok(3) => {
+                let s = store.pretty_print_dag();
+                println!("{}",s);
+            }
+            Ok(4) => {
+                let s = store.pretty_print_doc();
+                println!("{}",s);
+            }
+            Ok(_) => {
+                println!("Invalid option. Please enter 1, 2, 3 or 4.");
+            }
+            Err(_) => {
+                println!("Invalid input. Please enter a number.");
+            }
+        }
 
 
-    let _ = ui.run();
-
+    }
     Ok(())
 }

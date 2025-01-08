@@ -113,8 +113,8 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
         self.dag.get_node(hash)
     }
 
-    pub fn query<F>(&self, func: F,orecord: Option<QueryRecord>) -> QueryRecord
-        where F: Fn(&Node<O>) 
+    pub fn query<F>(&self,mut func: F,orecord: Option<QueryRecord>) -> QueryRecord
+        where F: FnMut(&Node<O>) 
     {
         self.dag.query(func, orecord)
     }

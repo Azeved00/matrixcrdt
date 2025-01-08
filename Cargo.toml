@@ -8,10 +8,10 @@ edition = "2021"
 
 anyhow = "1.0.68"
 tokio = { version = "1.39.1", default-features = false, features = ["sync", "rt-multi-thread"] }
-#auth_crdt = { path = "../crdts" }
 tracing-subscriber = "0.3.18"
 serde = { version = "1.0", features = ["derive"] }
 matrix-sdk = "0.7.1"
+automerge = "0.5.12"
 
 #crypto
 rand = "0.8.5"

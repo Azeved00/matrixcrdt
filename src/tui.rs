@@ -18,10 +18,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{
-    auth_dag::AuthDag,
-    auth_dag::merkle_dag::dag::QueryRecord,
-};
+use crate::auth_dag::CRDT;
 
 pub enum StateMachine{
     Main,
@@ -39,8 +36,7 @@ pub struct TerminalUI {
     main_ui_width: u16,
     notification_width: u16,
     notifications: Arc<Mutex<Vec<String>>>,
-    store: Arc<AuthDag>,
-    query_log: QueryRecord,
+    store: CRDT,
 
     sm: StateMachine,
     update_input: String,
@@ -48,7 +44,7 @@ pub struct TerminalUI {
 
 impl TerminalUI {
     /// Create a new instance of `TerminalUI`.
-    pub async fn new(s: Arc<AuthDag>) -> Result<Self, Error> {
+    pub async fn new(s: CRDT) -> Result<Self, Error> {
         let stdout = std::io::stdout();
         let (width, height) = terminal::size()?;
         let notification_width = (width as f32 * 0.3) as u16;
@@ -69,7 +65,6 @@ impl TerminalUI {
             notifications: list_ref,
             store: s,
             sm: StateMachine::Main,
-            query_log: Default::default(),
             update_input: "".to_string()
         })
     }
@@ -88,12 +83,8 @@ impl TerminalUI {
                 KeyCode::Enter => {
                     self.sm = StateMachine::Main;
 
-                    let store_ref = Arc::clone(&self.store);
-                    let input = self.update_input.clone();
+                    //let input = self.update_input.clone();
                     self.update_input.clear();
-                    tokio::spawn( async move {
-                        store_ref.send_update(input).await;
-                    });
                 }
                 KeyCode::Esc => {
                     self.sm = StateMachine::Main;
@@ -140,6 +131,7 @@ impl TerminalUI {
                     }
                 },
                 StateMachine::Query => {
+                    self.store.query();
                     if event::poll(std::time::Duration::from_millis(500))? {
                         if let Event::Key(KeyEvent {code: KeyCode::Char('q'),..}) = event::read()?
                         {
@@ -221,13 +213,6 @@ impl TerminalUI {
                 self.stdout.execute(cursor::MoveTo(2, 2))?;
                 self.stdout.write_all(b"Query Menu")?;
 
-                let notifications = Arc::clone(&self.notifications);
-                let log = self.store.query(|node| {
-                    let mut not_lock = notifications.lock().unwrap();
-                    not_lock.push(node.data.clone());
-                }, Some(self.query_log.clone()));
-
-                self.query_log = log;
                 self.stdout.execute(cursor::MoveTo(2, 3))?;
                 let output = format!("Query Done");
                 self.stdout.write_all(&output.into_bytes())?;
