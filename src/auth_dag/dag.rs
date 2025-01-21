@@ -2,6 +2,7 @@ use std::sync::Arc;
 use sha3::Sha3_256;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use matrix_sdk::{
     config::SyncSettings,
     event_handler::Ctx,
@@ -11,14 +12,15 @@ use matrix_sdk::{
     Client
 };
 
-use crate::auth_dag::merkle_dag::{auth::AuthMerkleDag, node::Node, dag::QueryRecord};
+use crate::auth_dag::merkle_dag::{auth::AuthMerkleDag, node::Node, QueryCursor};
 
 type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, String>>>; 
 
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "fcup.acrdt.update", kind = MessageLike)]
-struct UpdateEventContent {
+struct UpdateEventContent
+{
     cmd: Node<String>,
     author: String,
     version: u8,
@@ -29,6 +31,7 @@ pub struct AuthDag
     room: Room,
     user: String,
     dag: DagReference,
+    cursor: QueryCursor,
 }
 
 /// Authenticated Dag type,
@@ -87,13 +90,15 @@ impl AuthDag
             room,
             user: username.to_string(),
             dag: context,
+            cursor: QueryCursor::default(),
         }
     }
 
     /// Send update to other users
-    pub async fn send_update(&self, cmd: String) {
+    pub async fn send_update(&mut self, cmd: String) {
         let dag= self.dag.read().await;
-        let node = dag.gen_node(cmd);
+        let (node,cursor) = dag.gen_node(cmd, Some(self.cursor.clone()));
+        self.cursor = cursor;
 
         let content = UpdateEventContent {
             cmd: node,
@@ -115,17 +120,18 @@ impl AuthDag
     /// if a `log` is provided then the nodes that were updated before 
     /// will **not** be updated again making sure that `f` 
     /// is only called once for each node of the dag
-    pub fn query<F>(&self,func: F, log: Option<QueryRecord>) -> QueryRecord
+    pub fn query<F>(&mut self,func: F)
         where F: FnMut(&Node<String>)
     {
-        tokio::task::block_in_place(|| {
+        let cursor = tokio::task::block_in_place(|| {
             let runtime = tokio::runtime::Runtime::new().unwrap();
 
             runtime.block_on(async {
                 let map = self.dag.read().await;
-                map.query(func, log)
+                map.query(func, Some(self.cursor.clone()))
             })
-        })
+        });
+        self.cursor = cursor;
     }
 
     /// Pretty print function for a HashMap

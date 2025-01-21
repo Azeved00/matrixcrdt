@@ -1,6 +1,7 @@
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use core::marker::PhantomData;
+use std::collections::HashSet;
 use digest::{
     Digest, HashMarker,
     core_api::*,
@@ -9,9 +10,9 @@ use digest::{
     consts::U256,
 };
 use super::{
-    Hash,
+    Hash, QueryCursor,
     node::Node,
-    dag::{MerkleDag, QueryRecord},
+    dag::MerkleDag,
 };
 
 #[derive(Clone)]
@@ -58,11 +59,18 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
 
     /// Generate a node from the current merkle dag
     ///
-    /// it's parents will be the heads of the merkle dag
-    pub fn gen_node(&self, data: O) -> Node<O> {
-        let parents = self.dag.get_heads();
+    /// it's parents will be the heads of the merkle dag 
+    /// or, in the case a cursor is given, the heads represented by the cursor
+    ///
+    /// this function also returns a cursor which simply represents the returned node
+    pub fn gen_node(&self, data: O, opt_cursor: Option<QueryCursor>) -> (Node<O>, QueryCursor) {
+        let parents = match opt_cursor{
+            None => self.dag.get_heads(),
+            Some(cursor) => cursor.set.into_iter().collect(),
+        };
         let node = Node::new::<D>(self.key.clone(), &data, &parents);
-        node
+        let cursor = QueryCursor {set: HashSet::from([node.hash.clone()]) };
+        (node, cursor)
     }
 
     /// Insert a new node into the authenticated merkle dag,
@@ -113,10 +121,10 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
         self.dag.get_node(hash)
     }
 
-    pub fn query<F>(&self,mut func: F,orecord: Option<QueryRecord>) -> QueryRecord
+    pub fn query<F>(&self,mut func: F,opt_cursor: Option<QueryCursor>) -> QueryCursor
         where F: FnMut(&Node<O>) 
     {
-        self.dag.query(func, orecord)
+        self.dag.query(func, opt_cursor)
     }
 }
 

@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
 
         match input.parse::<u32>() {
             Ok(1) => {
-                store.update("new update".to_string()).await;
+                store.update("keys".to_string(), 32).await;
             }
             Ok(2) => {
                 store.query();

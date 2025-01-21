@@ -14,6 +14,7 @@ use serde::{Serialize, Deserialize};
 
 use super::node::Node;
 use super::Hash;
+use super::QueryCursor;
 
 
 /// The Merkle dag structure,
@@ -32,10 +33,6 @@ pub struct MerkleDag<O>
     pub (super)heads: BTreeMap<Hash, Node<O>>,
 }
 
-#[derive(Clone, Default)]
-pub struct QueryRecord {
-    set: HashSet<Hash>
-}
 
 impl<O> MerkleDag<O> 
     where O: Clone, O: Into<Vec<u8>>, O: Debug,
@@ -90,7 +87,7 @@ impl<O> MerkleDag<O>
     ///
     /// for a graph to be verified:(1) the hashes in each f the nodes need to be correct and
     /// (2) for all nodes, all parents are inside the graph (i.e. the graph is total)
-    pub fn verify_other<D>(&self, dag:Self, key: &Vec<u8>) -> bool
+    pub fn verify_other<D>(&self, _dag:Self, _key: &Vec<u8>) -> bool
         where 
             D: Digest,
             D: CoreProxy,
@@ -102,7 +99,7 @@ impl<O> MerkleDag<O>
             <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
             Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
     {
-        false
+        todo!("what do i do here");
     }
 
     /// This function verifies the DAG, this means that
@@ -294,7 +291,7 @@ impl<O> MerkleDag<O>
         self.dag.get(hash)
     }
 
-    fn query_head<F>(&self,mut func:F, record:&QueryRecord, head: &Node<O>)
+    fn query_head<F>(&self,mut func:F,cursor:&QueryCursor, head: &Node<O>)
         where F: FnMut(&Node<O>)     
     {
         let mut queue:VecDeque<&Node<O>> = VecDeque::new();
@@ -304,7 +301,7 @@ impl<O> MerkleDag<O>
             func(&node);
 
             for p_hash in &node.parents {
-                if (&record.set).contains(p_hash) {
+                if (&cursor.set).contains(p_hash) {
                     continue
                 }
 
@@ -323,25 +320,29 @@ impl<O> MerkleDag<O>
     /// A head node being included in the dag means that 
     /// every node that is a parent or parent of a parent of that head
     /// will be included in the return dag
-    pub fn query<F>(&self, mut func: F,orecord: Option<QueryRecord>) -> QueryRecord
+    ///
+    /// The returning `QueryCursor` represents
+    /// the list of heads that were queried, meaning that everything leading up 
+    /// to these heads is already included in the graph
+    pub fn query<F>(&self, mut func: F, old_cursor: Option<QueryCursor>) -> QueryCursor
         where F: FnMut(&Node<O>)
     {
-        let record = match orecord {
-            None => QueryRecord { set: HashSet::new() },
+        let cursor = match old_cursor{
+            None => QueryCursor::default(),
             Some(rec) => rec,
         };
 
         for (hash, node) in &self.heads {
-            if (&record.set).contains(hash) {
+            if (&cursor.set).contains(hash) {
                 continue;
             }
 
-            self.query_head(&mut func, &record, &node);
+            self.query_head(&mut func, &cursor, &node);
         }
 
         let new_set :HashSet<Hash> = self.heads.keys().cloned().collect();
 
-        QueryRecord{ set: new_set }
+        QueryCursor{ set: new_set }
     }
 }
 
