@@ -68,7 +68,8 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
             None => self.dag.get_heads(),
             Some(cursor) => cursor.set.into_iter().collect(),
         };
-        let node = Node::new::<D>(self.key.clone(), &data, &parents);
+        let layer = self.dag.get_top_layer();
+        let node = Node::new::<D>(self.key.clone(), &data, &parents, layer + 1);
         let cursor = QueryCursor {set: HashSet::from([node.hash.clone()]) };
         (node, cursor)
     }

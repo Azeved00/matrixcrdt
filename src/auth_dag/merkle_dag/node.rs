@@ -1,5 +1,6 @@
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
+use std::cmp::{Ord, Ordering};
 use hmac::Hmac;
 use digest::{
     Digest, HashMarker, Mac,
@@ -20,6 +21,7 @@ pub struct Node<O>
     pub hash: Hash,
     pub parents: Vec<Hash>,
     pub data: O,
+    pub layer: usize,
 }
 
 impl<O> Node<O>
@@ -28,7 +30,7 @@ impl<O> Node<O>
     /// Create a new merkle dag node,
     /// this will include creating the node's hash with digest `D` and key `key`
     /// both `data` and parents hashes (`parents`) will be hashed 
-    pub fn new<D>(key: Vec<u8>, data: &O, parents: &Vec<Hash>) -> Self 
+    pub fn new<D>(key: Vec<u8>, data: &O, parents: &Vec<Hash>, layer: usize) -> Self 
         where 
             D: Digest,
             D: CoreProxy,
@@ -54,6 +56,7 @@ impl<O> Node<O>
             data: data.clone(),
             parents: parents.clone(),
             hash: mac.finalize().into_bytes().to_vec(),
+            layer,
         }
     }
 
@@ -105,3 +108,30 @@ impl<O> Debug for Node<O>
             .finish()
     }
 }
+
+impl<O> Ord for Node<O>
+    where O:Debug
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.layer.cmp(&other.layer)
+    }
+}
+impl<O> PartialOrd for Node<O> 
+    where O:Debug
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<O> PartialEq for Node<O> 
+    where O:Debug
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash
+    }
+}
+
+impl<O> std::cmp::Eq for Node<O> 
+    where O:Debug
+{}
