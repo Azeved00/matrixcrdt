@@ -44,18 +44,13 @@ impl CRDT {
     }
 
     pub fn query(&mut self){
-        self.dag.query(|node| {
-            
-            let data = node.data.clone();
+        let vec = self.dag.query(); 
+        let changes = vec.map(|data: String| {
             let deser : &[u8] = serde_json::from_str(&data).expect("failed to deserialize");
             let change = Change::from_bytes(deser.to_vec()).expect("failed to transform into change");
-
-            todo!("apply changes");
-            self.doc.put(
-                automerge::ROOT, 
-                hash_to_key(&node.hash),
-            node.data.clone()).unwrap();
-        });
+            return change;
+        }).collect();
+        self.doc.apply_changes(changes);
     }
 
     pub fn pretty_print_dag(&self) -> String {

@@ -120,10 +120,9 @@ impl AuthDag
     /// if a `log` is provided then the nodes that were updated before 
     /// will **not** be updated again making sure that `f` 
     /// is only called once for each node of the dag
-    pub fn query<F>(&mut self,func: F)
-        where F: FnMut(&Node<String>)
+    pub fn query(&mut self) -> Vec<String>
     {
-        let cursor = tokio::task::block_in_place(|| {
+        let (res,cursor) = tokio::task::block_in_place(|| {
             let runtime = tokio::runtime::Runtime::new().unwrap();
 
             runtime.block_on(async {
@@ -132,6 +131,7 @@ impl AuthDag
             })
         });
         self.cursor = cursor;
+        return res
     }
 
     /// Pretty print function for a HashMap
