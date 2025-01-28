@@ -12,6 +12,7 @@ use matrix_acrdt::auth_dag::CRDT;
 
 use std::{
     io,
+    io::Write,
     env,
     process::exit,
 };
@@ -40,9 +41,10 @@ async fn main() -> anyhow::Result<()> {
     loop {
         println!("Choose an option:");
         println!("1. Update");
-        println!("2. Query");
-        println!("3. Pretty Print Dag");
+        println!("2. Save");
+        println!("3. Query");
         println!("4. Pretty Print Automerge Doc");
+        println!("5. Pretty Print Dag");
         println!("Enter your choice (or type 'q' to quit):");
 
         let mut input = String::new();
@@ -58,17 +60,34 @@ async fn main() -> anyhow::Result<()> {
 
         match input.parse::<u32>() {
             Ok(1) => {
-                store.update("keys".to_string(), 32).await;
+                print!("Enter key: ");
+                io::stdout().flush().unwrap();
+                let mut key = String::new();
+                io::stdin().read_line(&mut key).unwrap();
+                let key = key.trim();
+
+                print!("Enter value: ");
+                io::stdout().flush().unwrap();
+                let mut value = String::new();
+                io::stdin().read_line(&mut value).unwrap();
+                let value = value.trim();
+
+                store.update(key, value);
+
+                println!("Added or updated key '{}'.", key);
             }
             Ok(2) => {
-                store.query();
+                store.save().await;
             }
             Ok(3) => {
-                let s = store.pretty_print_dag();
-                println!("{}",s);
+                store.query();
             }
             Ok(4) => {
                 let s = store.pretty_print_doc();
+                println!("{}",s);
+            }
+            Ok(5) => {
+                let s = store.pretty_print_dag();
                 println!("{}",s);
             }
             Ok(_) => {

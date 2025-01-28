@@ -122,10 +122,9 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
         self.dag.get_node(hash)
     }
 
-    pub fn query<F>(&self,mut func: F,opt_cursor: Option<QueryCursor>) -> QueryCursor
-        where F: FnMut(&Node<O>) 
+    pub fn query(&self,opt_cursor: Option<QueryCursor>) -> (Vec<O>, QueryCursor)
     {
-        self.dag.query(func, opt_cursor)
+        self.dag.query(opt_cursor)
     }
 }
 

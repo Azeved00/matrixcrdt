@@ -318,16 +318,28 @@ impl<O> MerkleDag<O>
     /// to these heads is already included in the graph
     pub fn query(&self, old_cursor: Option<QueryCursor>) -> (Vec<O>, QueryCursor)
     {
+        let cursor = match old_cursor {
+            Some(cursor) => cursor,
+            None => {
+                QueryCursor {set: HashSet::new() }
+            }
+        };
         let mut heap = BinaryHeap::<&Node<O>>::new();
         let mut res = Vec::<O>::new();
 
         for (_, node) in &self.heads {
+            if cursor.contains(&node.hash) { 
+                continue; 
+            }
             heap.push(node);
         }
         
         while !heap.is_empty() {
             let top = heap.pop().expect("Heap should be empty");
             for parent_hash in &top.parents {
+                if cursor.contains(&parent_hash) {
+                    continue;
+                }
                 let parent = self.get_node(&parent_hash).unwrap();
                 heap.push(parent);
             }
