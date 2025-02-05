@@ -56,10 +56,10 @@ impl CRDT {
         }
     }
 
+    pub fn query(&mut self) {
+        let (ser_change, cursor) = self.dag.query(Some(self.cursor.clone()));
+        self.cursor = cursor;
 
-
-    pub fn query(&mut self){
-        let ser_change = self.dag.query(Some(self.cursor));
         let changes: Vec<Change> = ser_change.into_iter().map(|data: String| {
             let deser : &[u8] = serde_json::from_str(&data).expect("failed to deserialize");
             let change = Change::from_bytes(deser.to_vec()).expect("failed to transform into change");
@@ -67,7 +67,6 @@ impl CRDT {
         }).collect();
         
         let _result = self.doc.apply_changes(changes);
-        todo!("make sure result is taken care of ");
     }
 
     pub fn pretty_print_dag(&self) -> String {
