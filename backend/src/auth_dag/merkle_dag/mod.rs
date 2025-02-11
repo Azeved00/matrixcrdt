@@ -10,3 +10,10 @@ pub type Hash = Vec<u8>;
 pub struct QueryCursor {
     pub (crate) set: HashSet<Hash>
 }
+
+impl QueryCursor {
+    pub fn contains(&self, hash: &Hash) -> bool {
+        self.set.contains(hash)
+    }
+}
+

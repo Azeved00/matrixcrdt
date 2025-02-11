@@ -127,7 +127,7 @@ impl AuthDag
 
             runtime.block_on(async {
                 let map = self.dag.read().await;
-                map.query(func, Some(self.cursor.clone()))
+                map.query(Some(self.cursor.clone()))
             })
         });
         self.cursor = cursor;

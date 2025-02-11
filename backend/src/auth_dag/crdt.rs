@@ -5,7 +5,7 @@ use automerge::{
 
 };
 use serde_json;
-use crate::auth_dag::{AuthDag,Hash};
+use crate::auth_dag::AuthDag;
 
 
 pub struct CRDT {
@@ -14,9 +14,10 @@ pub struct CRDT {
     cmap: ObjId,
 }
 
-fn hash_to_key(bytes: &Hash) -> String {
-    String::from_utf8_lossy(&bytes).to_string()
-}
+/*fn hash_to_key(bytes: &Hash) -> String {
+ *   String::from_utf8_lossy(&bytes).to_string()
+ *}
+ */
 
 impl CRDT {
     pub async fn new(username: &str, password: &str) -> Self {
@@ -30,9 +31,11 @@ impl CRDT {
         }
     }
 
-    pub async fn update(&mut self, key: String,delta: u32){
-        self.doc.put(&self.cmap, key, delta).expect("failed to insert in map");
-        
+    pub fn update(&mut self, key: &str, value: &str){
+        self.doc.put(&self.cmap, key, value).expect("failed to insert in map");
+    }
+
+    pub async fn save(&mut self){
         let ochange = self.doc.get_last_local_change();
         match ochange {
             None => {},
@@ -43,14 +46,18 @@ impl CRDT {
         }
     }
 
+
+
     pub fn query(&mut self){
-        let vec = self.dag.query(); 
-        let changes = vec.map(|data: String| {
+        let ser_change = self.dag.query();
+        let changes: Vec<Change> = ser_change.into_iter().map(|data: String| {
             let deser : &[u8] = serde_json::from_str(&data).expect("failed to deserialize");
             let change = Change::from_bytes(deser.to_vec()).expect("failed to transform into change");
             return change;
         }).collect();
-        self.doc.apply_changes(changes);
+        
+        let _result = self.doc.apply_changes(changes);
+        todo!("make sure result is taken care of ");
     }
 
     pub fn pretty_print_dag(&self) -> String {

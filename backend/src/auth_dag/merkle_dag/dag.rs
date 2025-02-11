@@ -2,7 +2,8 @@ use log::{info,error};
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use std::collections::BTreeMap;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, HashMap, BinaryHeap, VecDeque};
+use std::cmp;
 use digest::{
     Digest, HashMarker,
     core_api::*,
@@ -30,6 +31,7 @@ pub struct MerkleDag<O>
 {
     dag: BTreeMap<Hash, Node<O>>,
     partial: bool,
+    top_layer: usize,
     pub (super)heads: BTreeMap<Hash, Node<O>>,
 }
 
@@ -43,14 +45,24 @@ impl<O> MerkleDag<O>
         Self{ 
             dag: BTreeMap::new(), 
             partial: true,
+            top_layer: 0,
             heads: BTreeMap::new(), 
         }
     }
 
-    /// Returns the length of a node,
+    /// Returns the length of the dag,
     /// i.e. the number of nodes in it
     pub fn len(&self) -> usize {
         return self.dag.len();
+    }
+
+    pub fn get_top_layer(&self) -> usize {
+        return self.top_layer;
+    }
+
+    /// Get a Node with a cetain hash from the dag
+    pub fn get_node(&self, hash: &Hash) -> Option<&Node<O>> {
+        self.dag.get(hash)
     }
 
     /// Add a node to the network
@@ -76,6 +88,7 @@ impl<O> MerkleDag<O>
             self.heads.remove(parent_hash);
         }
 
+        self.top_layer = cmp::max(self.top_layer, node.layer);
         self.dag.insert(node.hash.clone(),node.clone());
         self.heads.insert(node.hash.clone(),node.clone());
     }
@@ -168,6 +181,8 @@ impl<O> MerkleDag<O>
 
             self.dag.insert(n.hash.clone(), n.clone()); 
         }
+
+        self.top_layer = cmp::max(self.top_layer, dag.top_layer);
     }
 
     /// Return a valid linearization of the Dag,
@@ -282,34 +297,11 @@ impl<O> MerkleDag<O>
         Self {
             dag: new_dag,
             heads: new_heads,
+            top_layer: 0,
             partial: true,
         }
     }
 
-    /// Get a Node with a cetain hash from the dag
-    pub fn get_node(&self, hash: &Hash) -> Option<&Node<O>> {
-        self.dag.get(hash)
-    }
-
-    fn query_head<F>(&self,mut func:F,cursor:&QueryCursor, head: &Node<O>)
-        where F: FnMut(&Node<O>)     
-    {
-        let mut queue:VecDeque<&Node<O>> = VecDeque::new();
-        queue.push_back(head);
-
-        while let Some(node) = queue.pop_front() {
-            func(&node);
-
-            for p_hash in &node.parents {
-                if (&cursor.set).contains(p_hash) {
-                    continue
-                }
-
-                let parent = self.dag.get(p_hash).unwrap();
-                queue.push_back(&parent);
-            }
-        }
-    }
 
     /// Use a function to create a subset of the merkle dag,
     ///
@@ -324,25 +316,41 @@ impl<O> MerkleDag<O>
     /// The returning `QueryCursor` represents
     /// the list of heads that were queried, meaning that everything leading up 
     /// to these heads is already included in the graph
-    pub fn query<F>(&self, mut func: F, old_cursor: Option<QueryCursor>) -> QueryCursor
-        where F: FnMut(&Node<O>)
+    pub fn query(&self, old_cursor: Option<QueryCursor>) -> (Vec<O>, QueryCursor)
     {
-        let cursor = match old_cursor{
-            None => QueryCursor::default(),
-            Some(rec) => rec,
-        };
-
-        for (hash, node) in &self.heads {
-            if (&cursor.set).contains(hash) {
-                continue;
+        let cursor = match old_cursor {
+            Some(cursor) => cursor,
+            None => {
+                QueryCursor {set: HashSet::new() }
             }
+        };
+        let mut heap = BinaryHeap::<&Node<O>>::new();
+        let mut res = Vec::<O>::new();
 
-            self.query_head(&mut func, &cursor, &node);
+        for (_, node) in &self.heads {
+            if cursor.contains(&node.hash) { 
+                continue; 
+            }
+            heap.push(node);
         }
+        
+        while !heap.is_empty() {
+            let top = heap.pop().expect("Heap should be empty");
+            for parent_hash in &top.parents {
+                if cursor.contains(&parent_hash) {
+                    continue;
+                }
+                let parent = self.get_node(&parent_hash).unwrap();
+                heap.push(parent);
+            }
+            
+            res.push(top.data.clone());
+        }
+        
 
-        let new_set :HashSet<Hash> = self.heads.keys().cloned().collect();
-
-        QueryCursor{ set: new_set }
+        let heads : Vec<Vec<u8>> = self.heads.keys().cloned().collect();
+        let cursor = QueryCursor {set: heads.into_iter().collect() };
+        return (res.into_iter().rev().collect(), cursor)
     }
 }
 
