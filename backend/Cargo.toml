@@ -1,17 +1,18 @@
 [package]
-name = "matrix_acrdt"
+name = "auth_crdt"
 version = "0.1.0"
 authors = [""]
 edition = "2021"
 
+[lib]
+name = "auth_crdt"
+
+[[bin]]
+name="matrix"
+
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 tokio = { version = "1", features = ["full"] }
-
-
-[[bench]]
-name = "query_bench"
-harness = false
 
 [dependencies]
 anyhow = "1.0.68"
@@ -32,3 +33,6 @@ hmac = "0.12.1"
 log = "0.4.22"
 env_logger = "0.9.0"
 crossterm = "0.28.1"
+
+#
+wasm-bindgen = "0.2"

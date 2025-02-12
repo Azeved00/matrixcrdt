@@ -5,7 +5,7 @@ use automerge::{
 
 };
 use serde_json;
-use crate::auth_dag::AuthDag;
+use crate::AuthDag;
 
 
 pub struct CRDT {

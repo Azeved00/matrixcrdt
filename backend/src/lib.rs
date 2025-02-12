@@ -1,1 +1,19 @@
-pub mod auth_dag;
+pub mod node;
+pub mod dag;
+pub mod auth;
+
+use std::collections::HashSet;
+
+pub type Hash = Vec<u8>;
+
+#[derive(Clone, Default)]
+pub struct QueryCursor {
+    pub (crate) set: HashSet<Hash>
+}
+
+impl QueryCursor {
+    pub fn contains(&self, hash: &Hash) -> bool {
+        self.set.contains(hash)
+    }
+}
+

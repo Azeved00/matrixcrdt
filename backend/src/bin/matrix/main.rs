@@ -7,8 +7,11 @@
 /// of the bot. You will see that it sends the `Ping` event and upon receiving
 /// it responds with the `Ack` event send to the room. You won't see that in
 /// most regular clients, unless you activate showing of unknown events.
-use matrix_acrdt::auth_dag::CRDT;
+pub mod crdt;
+pub mod dag;
 
+use dag::AuthDag;
+use crdt::CRDT;
 
 use std::{
     io,
