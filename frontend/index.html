@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Server UI</title>
+</head>
+<body>
+    <h1>Map Server Interaction</h1>
+    <div>
+        <input type="text" id="key" placeholder="Enter key">
+        <input type="text" id="value" placeholder="Enter value">
+        <button onclick="addOrUpdate()">Add/Update</button>
+        <button onclick="getValue()">Get Value</button>
+        <button onclick="deleteKey()">Delete</button>
+    </div>
+    <div>
+        <button onclick="save()">Save</button>
+        <button onclick="query()">Query</button>
+    </div>
+    <div id="output"></div>
+
+    <script>
+        const serverUrl = 'http://localhost:3000/map';
+
+        async function getValue() {
+            const key = document.getElementById('key').value;
+            const response = await fetch(`${serverUrl}/map/${key}`);
+            const result = await response.json();
+            document.getElementById('output').innerText = JSON.stringify(result, null, 2);
+        }
+
+        async function addOrUpdate() {
+            const key = document.getElementById('key').value;
+            const value = document.getElementById('value').value;
+            const response = await fetch(`${serverUrl}/map`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value })
+            });
+            const result = await response.json();
+            document.getElementById('output').innerText = JSON.stringify(result, null, 2);
+        }
+
+        async function deleteKey() {
+            const key = document.getElementById('key').value;
+            const response = await fetch(`${serverUrl}/map/${key}`, { method: 'DELETE' });
+            const result = await response.json();
+            document.getElementById('output').innerText = JSON.stringify(result, null, 2);
+        }
+        
+        async function save() {
+            const response = await fetch(`${serverUrl}/save`);
+            const result = await response.json();
+        }
+
+        async function query() {
+            const response = await fetch(`${serverUrl}/query`);
+            const result = await response.json();
+        }
+    </script>
+</body>
+</html>
