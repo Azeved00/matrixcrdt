@@ -7,8 +7,10 @@ use automerge::{
 use serde_json;
 use sha3::Sha3_256;
 
-use matrix_acrdt::auth_dag::merkle_dag::{
-    auth::AuthMerkleDag, node::Node, QueryCursor
+use auth_crdt::{
+    auth::AuthMerkleDag, 
+    node::Node, 
+    QueryCursor
 };
 
 type Dag = AuthMerkleDag<Sha3_256, String>; 
@@ -49,7 +51,8 @@ impl CRDT {
             None => None,
             Some(change) => {
                 let s = serde_json::to_string(&change.raw_bytes()).expect("failed to serialize change");
-                let (node,cursor) = self.dag.gen_node(s, Some(self.cursor.clone()));
+                let node = self.dag.gen_node(s, Some(self.cursor.clone()));
+                let cursor = self.dag.add(node, Some(self.cursor.clone()));
                 self.cursor = cursor;
                 return Some(node);
             }

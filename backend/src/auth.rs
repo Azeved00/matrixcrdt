@@ -2,6 +2,7 @@ use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use core::marker::PhantomData;
 use std::collections::HashSet;
+use wasm_bindgen::prelude::*;
 use digest::{
     Digest, HashMarker,
     core_api::*,
@@ -9,6 +10,7 @@ use digest::{
     block_buffer::Eager,
     consts::U256,
 };
+
 use super::{
     Hash, QueryCursor,
     node::Node,
@@ -31,7 +33,6 @@ pub struct AuthMerkleDag<D:Digest, O>
     key: Vec<u8>,
     dag: MerkleDag<O>,
 }
-
 
 impl<D: Digest, O> AuthMerkleDag<D, O> 
     where O: Clone, O: Into<Vec<u8>>, O: Debug,
@@ -61,22 +62,32 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     ///
     /// it's parents will be the heads of the merkle dag 
     /// or, in the case a cursor is given, the heads represented by the cursor
-    ///
-    /// this function also returns a cursor which simply represents the returned node
-    pub fn gen_node(&self, data: O, opt_cursor: Option<QueryCursor>) -> (Node<O>, QueryCursor) {
+    pub fn gen_node(&self, data: O, opt_cursor: Option<QueryCursor>) -> Node<O> {
         let parents = match opt_cursor{
             None => self.dag.get_heads(),
             Some(cursor) => cursor.set.into_iter().collect(),
         };
         let layer = self.dag.get_top_layer();
         let node = Node::new::<D>(self.key.clone(), &data, &parents, layer + 1);
-        let cursor = QueryCursor {set: HashSet::from([node.hash.clone()]) };
-        (node, cursor)
+        node
     }
 
     /// Insert a new node into the authenticated merkle dag,
-    pub fn add_node(&mut self, node: Node<O>){
+    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>) -> QueryCursor {
         self.dag.add_node(node.clone());
+        
+        match opt_cursor {
+            None => QueryCursor {set: HashSet::from([node.hash.clone()]) },
+            Some(c) => {
+                let mut cursor = c.clone();
+                for parent in &node.parents {
+                    cursor.set.remove(parent);
+                }
+                cursor.set.insert(node.hash.clone());
+
+                return cursor;
+            }
+        }
     }
 
     /// Verify the authenticated merkle dag
