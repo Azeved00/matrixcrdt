@@ -2,7 +2,6 @@ use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use core::marker::PhantomData;
 use std::collections::HashSet;
-use wasm_bindgen::prelude::*;
 use digest::{
     Digest, HashMarker,
     core_api::*,

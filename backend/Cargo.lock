@@ -217,7 +217,6 @@ dependencies = [
  "sha3",
  "tokio",
  "tracing-subscriber",
- "wasm-bindgen",
 ]
 
 [[package]]
