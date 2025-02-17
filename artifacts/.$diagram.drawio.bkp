@@ -1,0 +1,54 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.4 Chrome/130.0.6723.170 Electron/33.3.1 Safari/537.36" version="26.0.4">
+  <diagram name="Architecture" id="JrlzXubRB-roWuiYhG7T">
+    <mxGraphModel dx="1402" dy="806" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-1" value="Client" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontColor=default;" vertex="1" parent="1">
+          <mxGeometry x="30" y="350" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-2" value="Process 1" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="240" width="200" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-6" value="Frontend&lt;div&gt;(js)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="25f1EqMZqrLXnutD1AcZ-2">
+          <mxGeometry x="40" y="70" width="120" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-3" value="Process 2" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="240" width="390" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-4" value="Network&lt;div&gt;(matrix or custom)&lt;/div&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="25f1EqMZqrLXnutD1AcZ-3">
+          <mxGeometry x="210" y="75" width="160" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-5" value="Backend&lt;div&gt;(Rust)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="25f1EqMZqrLXnutD1AcZ-3">
+          <mxGeometry x="40" y="40" width="120" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-7" value="" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0.367;entryY=0.988;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="25f1EqMZqrLXnutD1AcZ-6">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="230" y="590" as="sourcePoint" />
+            <mxPoint x="240" y="530" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="230" y="540" />
+              <mxPoint x="190" y="550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-8" value="Use delta CRDT lib here" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="170" y="590" width="130" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-9" value="" style="curved=1;endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="390" y="130" as="sourcePoint" />
+            <mxPoint x="370" y="300" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="420" y="190" />
+              <mxPoint x="330" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25f1EqMZqrLXnutD1AcZ-10" value="This communication is via sockets" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="140" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
