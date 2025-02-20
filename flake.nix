@@ -61,7 +61,11 @@
                     rustVersion
                 ];
 
-                shellHook = '''';
+                shellHook = ''
+                    build() {
+                        cargo build --color=always 2>&1 | less
+                    }
+                '';
             };
         };
     };
