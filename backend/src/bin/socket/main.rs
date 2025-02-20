@@ -1,63 +1,27 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::cmp;
-use std::vec::Vec;
 
-enum Command {
-    Update,
-    Query,
+use auth_crdt::{AuthDag, QueryCursor};
 
-    Error,
-    Unknown,
-}
-struct Message {
-    pub command: u8,
-    pub clock:   u32,
-    pub length:  u32,
-    pub message: Vec<u8>,
-}
-impl Message {
-    fn to_bytes(&self) -> Vec<u8> {
-        let mut buffer = Vec::new();
-        buffer.push(self.command);
-        buffer.extend_from_slice(&self.clock.to_be_bytes());
+pub mod message;
+use crate::message::{Message, Command}; 
 
-        buffer.extend_from_slice(&self.length.to_be_bytes());
-        buffer.extend_from_slice(&self.message);
-
-        buffer
-    }
-
-    fn header_from_bytes(data: &[u8]) -> Result<Self, String> {
-        if data.len() < 9 {
-            return Err("Data too short to be a valid message".to_string());
-        }
-        let command = data[0];
-
-        let clock = u32::from_be_bytes(data[1..5].try_into().unwrap());
-        let length = u32::from_be_bytes(data[5..9].try_into().unwrap());
-
-        Ok(Self{
-            command,
-            clock,
-            length,
-            message: vec![],
-        })
-    }
-
-    fn get_command(&self) -> Command {
-        match  self.command {
-            0 => Command::Save,
-            1 => Command::Query,
-            _ => Command::Unknown,
-            
-        }
-    }
+struct Context {
+    pub clock: u32,
+    pub dag: AuthDag,
+    pub cursor: QueryCursor,
+    
 }
 
 fn handle_connection(mut stream: TcpStream) {
     let mut header = [0; 9];
-    let mut clock:u32 = 0;
+    let mut ctx = Context {
+        clock: 0,
+        dag: AuthDag::new("My super secret Key".to_string().into()),
+        cursor: QueryCursor::default(),
+    };
+
 
     loop {
         if stream.read_exact(&mut header).is_err() {
@@ -66,7 +30,7 @@ fn handle_connection(mut stream: TcpStream) {
         }
 
         let mut msg = Message::header_from_bytes(&header).unwrap();
-        clock = cmp::max(clock, msg.clock);
+        ctx.clock = cmp::max(ctx.clock, msg.clock);
 
         let mut buffer = vec![0;  msg.length as usize];
         if stream.read_exact(&mut buffer).is_err() {
@@ -74,21 +38,32 @@ fn handle_connection(mut stream: TcpStream) {
             break;
         }
         msg.message = buffer;
-        handle_message(msg);
-        
-        stream.write_all(b"Hello, Client!").unwrap();
-        todo!("build and send return message");
+        let answer = handle_message(ctx, msg);
+        let ser_answer = answer.to_bytes();
+
+        stream.write_all(&ser_answer).unwrap();
     }
 }
 
-fn handle_message(message: Message) -> Message {
+fn handle_message(mut ctx: Context, message: Message) -> Message {
     match message.get_command() {
         Command::Update => {
-            todo!("make update to dag");
+            let node = ctx.dag.gen_node(message.message, Some(ctx.cursor));
+            ctx.dag.add_node(node, None);
+            Message::new(Command::Update, ctx.clock+1)
         }
         Command::Query => {
+            let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor));
+            ctx.cursor = cursor;
+            let ret = Message::new(Command::Query, ctx.clock+1);
+            todo!("serialize and return change_array");
+            ret 
         }
         Command::Unknown => {
+            Message::new(Command::Error, ctx.clock + 1)
+        }
+        Command::Error => {
+            Message::new(Command::Error, ctx.clock+1)
         }
     }
 }
