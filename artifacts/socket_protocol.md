@@ -9,12 +9,11 @@ The base of the protocol is length-prefixed messages.
 Making use of a clock, for message ordering, and
 an operation id, for differentiating between the different operations (more about operations later)
 
-| 1-bit | 4-bit| 4-bit| n-bits|
+| 1 byte | 8 bytes | 8 bytes | n bytes|
 |---|---|---| --- |
 | operation code | message clock | message length | message |
 
 note that `|message| == n`
-
 
 ## Operations
 
@@ -41,7 +40,7 @@ The `Query` operation is, also, emmited by the frontend but it doesnt require a 
 Instead, in the case the query is successful, the `Acknowledge` will contain an Array of binary messages representing the changes that were querried.
 This array will be in the form:
 
-| 4-bit | 4-bit| $n_0$-bit| ...| 4-bit| $n_i$-bit|
+| 8 bytes | 8 bytes | $n_0$ bytes | ...| 8 bytes | $n_i$ bytes|
 |---|---|---| --- | --- | --- |
 | number of changes | message $n_0$ size | $n_0$ message| ... |message $n_0$ size | $n_i$ message|
 
@@ -58,3 +57,9 @@ Acknowledges are emited by the backend in case of a successful operation.
 
 Errors are emited only by the backend but in the case of an unsuccessful operation. 
 As message errors include, in utf-8, why the operation failed.
+
+## Clock
+
+The message clock is used for ordering the messages as well as identifying the answer for each request.
+When an `Update` or `Query` is requested, the answer will contain the same clock.
+
