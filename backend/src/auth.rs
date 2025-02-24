@@ -67,7 +67,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
             Some(cursor) => cursor.set.into_iter().collect(),
         };
         let layer = self.dag.get_top_layer();
-        let node = Node::new::<D>(self.key.clone(), &data, &parents, layer + 1);
+        let node = Node::new::<D>(&self.key, &data, &parents, layer + 1);
         node
     }
 

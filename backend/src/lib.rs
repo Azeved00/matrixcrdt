@@ -15,6 +15,12 @@ pub struct QueryCursor {
 }
 
 impl QueryCursor {
+    pub fn new() -> Self {
+        QueryCursor {
+            set: HashSet::new(),
+        }
+    }
+
     pub fn contains(&self, hash: &Hash) -> bool {
         self.set.contains(hash)
     }

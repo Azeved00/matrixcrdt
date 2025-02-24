@@ -30,7 +30,7 @@ impl<O> Node<O>
     /// Create a new merkle dag node,
     /// this will include creating the node's hash with digest `D` and key `key`
     /// both `data` and parents hashes (`parents`) will be hashed 
-    pub fn new<D>(key: Vec<u8>, data: &O, parents: &Vec<Hash>, layer: usize) -> Self 
+    pub fn new<D>(key: &Vec<u8>, data: &O, parents: &Vec<Hash>, layer: usize) -> Self 
         where 
             D: Digest,
             D: CoreProxy,
@@ -42,7 +42,7 @@ impl<O> Node<O>
             <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
             Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
     {
-        let mut mac = Hmac::<D>::new_from_slice(&key)
+        let mut mac = Hmac::<D>::new_from_slice(key)
                 .expect("HMAC can take key of any size");
 
         let action_bytes: Vec<u8> = data.clone().into(); 
@@ -63,7 +63,7 @@ impl<O> Node<O>
     /// verifying the node, 
     /// takes a key and checks if (for the given digest)
     /// the hash of the node is correct
-    pub fn verify<D>(&self, key: Vec<u8>) ->  bool
+    pub fn verify<D>(&self, key: &Vec<u8>) ->  bool
         where 
             D: Digest,
             D: CoreProxy,
@@ -75,7 +75,7 @@ impl<O> Node<O>
             <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
             Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
     {
-        let mut mac = Hmac::<D>::new_from_slice(&key)
+        let mut mac = Hmac::<D>::new_from_slice(key)
                 .expect("HMAC can take key of any size");
 
         let action_bytes: Vec<u8> = self.data.clone().into(); 
@@ -135,3 +135,41 @@ impl<O> PartialEq for Node<O>
 impl<O> std::cmp::Eq for Node<O> 
     where O:Debug
 {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sha3::Sha3_256;
+
+    #[test]
+    fn hash_correctness() {
+        let key : Vec<u8> = "".to_string().into();
+        let data: Vec<u8> = vec![];
+
+        let mut mac = Hmac::<Sha3_256>::new_from_slice(&key)
+                .expect("HMAC can take key of any size");
+
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![], &vec![vec![]], 0);
+
+
+        let action_bytes: Vec<u8> = data; 
+        mac.update(action_bytes.as_slice());
+        let hash =  mac.finalize().into_bytes().to_vec();
+
+        assert_eq!(hash, node.hash);
+    }
+
+    #[test]
+    fn verification() {
+        let key : Vec<u8> = "".to_string().into();
+        let data: Vec<u8> = vec![];
+
+        let mut node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &data, &vec![vec![]], 0);
+
+        assert!(node.verify::<Sha3_256>(&key));
+        
+        node.data = vec![1,2];
+
+        assert!(!node.verify::<Sha3_256>(&key));
+    }
+}

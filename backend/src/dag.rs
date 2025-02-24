@@ -132,7 +132,7 @@ impl<O> MerkleDag<O>
             Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
     {
         self.dag.values().all(|node| 
-            node.verify::<D>(key.clone()) &&
+            node.verify::<D>(&key) &&
             node.parents.iter().all(|parent_hash| {
                 if let Some(_) = self.dag.get(parent_hash) {
                     true
@@ -279,6 +279,7 @@ impl<O> MerkleDag<O>
     /// A head node being included in the dag means that 
     /// every node that is a parent or parent of a parent of that head
     /// will be included in the return dag
+    #[deprecated]
     pub fn subset<F>(&self, condition: F) -> Self
         where F: Fn(&Node<O>) -> bool
     {
@@ -366,5 +367,22 @@ impl<O>Debug for MerkleDag<O>
             .field("heads",  &self.heads)
             .field("graph",  &linearization)
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initialization() {
+        let dag = MerkleDag::<Vec<u8>>::new();
+
+        assert_eq!(dag.get_top_layer(), 0);
+        assert_eq!(dag.len(), 0);
+    }
+    
+    #[test]
+    fn adding(){
     }
 }
