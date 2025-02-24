@@ -1,0 +1,52 @@
+import msgpack from "@msgpack/msgpack";
+
+export default class Message {
+    constructor(code, clock, message) {
+        this.code = code;
+        this.clock = BigInt(clock);
+        this.message = typeof message === "object" && message !== null ? message : { data: message };    
+    }
+
+
+    // Convert the object into a Buffer
+    serialize() {
+        const codeBuffer = Buffer.alloc(1);
+        codeBuffer.writeUInt8(this.code, 0);
+
+        const clockBuffer = Buffer.alloc(8);
+        clockBuffer.writeBigUInt64BE(this.clock, 0);
+
+        const messageBuffer = Buffer.from(msgpack.encode(this.message));
+        const messageLengthBuffer = Buffer.alloc(8);
+        messageLengthBuffer.writeBigUInt64BE(BigInt(messageBuffer.length), 0);
+
+        return Buffer.concat([codeBuffer, clockBuffer, messageLengthBuffer, messageBuffer]);
+    }
+
+    // Static method to parse a Buffer into a Message object
+    static deserialize(buffer) {
+        let offset = 0;
+
+        const code = buffer.readUInt8(offset);
+        offset += 1;
+
+        const clock = buffer.readBigUInt64BE(offset);
+        offset += 8;
+
+        const messageLength = buffer.readBigUInt64BE(offset);
+        offset += 8;
+
+        let data = "";
+        if (messageLength > 0) {
+            const messageBuffer = buffer.slice(offset, offset + Number(messageLength));
+            data = msgpack.decode(messageBuffer);
+        }
+
+        // Ensure message is always an object
+        if (typeof data !== "object" || data === null || Array.isArray(data)) {
+            data = { data: data};
+        }
+
+        return new Message(code, clock, data);
+    }
+}

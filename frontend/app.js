@@ -2,37 +2,41 @@ import net      from "net";
 import express  from 'express';
 import path     from "path";
 import dcrdtLib from './lib/delta-crdt/frontend/index.js';
+import MessageProcessor from "./src/processor.js";
+import Message from "./src/message.js";
+
 
 const __dirname = path.resolve(path.dirname(''))
 let dcrdt = dcrdtLib.init({});
-const client = new net.Socket();
+const socket = new net.Socket();
 const app = express();
 const port = 3000;
+let clock = 0n;
+let msgProc = new MessageProcessor();
 
 // Set up socket to Auth Dag
-//client.connect(20076, "127.0.0.1", () => {
-    //console.log("Connected to Rust server!");
-//});
-
-client.on("data", (data) => {
-    console.log("Received:", data.toString());
+socket.connect(20076, "127.0.0.1", () => {
+    console.log("Connected to Rust server!");
 });
-
-client.on("close", () => {
+socket.on("data", (data) => {
+    console.log("message received");
+    let message = Message.deserialize(data);
+    msgProc.processMessage(message);
+});
+socket.on("close", () => {
     console.log("Connection closed");
 });
-
 
 // Set up express server
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
 // Get all key-value pairs
-app.get('/map', (req, res) => {
-    const docv = JSON.stringify(dcrdtLib.documentValue(dcrdt), (key, value) => 
+app.get('/map', (_req, res) => {
+    const docv = JSON.stringify(dcrdtLib.documentValue(dcrdt), (_key, value) => 
         value instanceof Set ? [...value] : value
     );
     console.log(docv);
@@ -70,13 +74,23 @@ app.delete('/map/:key', (req, res) => {
     res.json({ message: 'Entry deleted', key });
 });
 
-app.get('/save', (req, res) => {
+app.get('/save', (_req, res) => {
     const delta = dcrdtLib.getChanges(dcrdt);
+    let message = new Message(0, clock, delta);
+    msgProc.enqueueCounter(clock);
+    clock += 1n;
+    socket.write(message.serialize())
+
     res.status(200).json();
 });
 
-app.get('/query', (req, res) => {
-    console.log("Query is not yet implemented")
+app.get('/query', (_req, res) => {
+    let message = new message(1, clock, "");
+    msgProc.enqueueCounter(clock);
+    clock += 1n;
+    socket.write(message.serialize())
+
+    res.status(200).json();
 });
 
 
