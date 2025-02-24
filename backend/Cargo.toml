@@ -7,8 +7,8 @@ edition = "2021"
 [lib]
 name = "auth_crdt"
 
-[[bin]]
-name="matrix"
+#[[bin]]
+#name="matrix"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
