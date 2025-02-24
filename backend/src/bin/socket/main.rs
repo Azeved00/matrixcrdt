@@ -8,14 +8,14 @@ pub mod message;
 use crate::message::{Message, Command}; 
 
 struct Context {
-    pub clock: u32,
+    pub clock: u64,
     pub dag: AuthDag,
     pub cursor: QueryCursor,
     
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let mut header = [0; 9];
+    let mut header = [0; 17];
     let mut ctx = Context {
         clock: 0,
         dag: AuthDag::new("My super secret Key".to_string().into()),
@@ -29,7 +29,10 @@ fn handle_connection(mut stream: TcpStream) {
             break;
         }
 
+        println!("received new message");
+        println!("{:?}", header);
         let mut msg = Message::header_from_bytes(&header).unwrap();
+
         ctx.clock = cmp::max(ctx.clock, msg.clock);
 
         let mut buffer = vec![0;  msg.length as usize];
@@ -38,32 +41,54 @@ fn handle_connection(mut stream: TcpStream) {
             break;
         }
         msg.message = buffer;
-        let answer = handle_message(ctx, msg);
+        println!("{:?}", msg);
+
+        let answer = process_message(&mut ctx, msg);
         let ser_answer = answer.to_bytes();
 
         stream.write_all(&ser_answer).unwrap();
+        ctx.clock += 1;
     }
 }
 
-fn handle_message(mut ctx: Context, message: Message) -> Message {
+fn encode_changes(messages: Vec<Vec<u8>>) -> Vec<u8> {
+    let mut encoded = Vec::new();
+
+    let num_messages = messages.len() as u64;
+    encoded.extend_from_slice(&num_messages.to_le_bytes());
+
+    for message in messages {
+        let length = message.len() as u64;
+        encoded.extend_from_slice(&length.to_le_bytes());
+        encoded.extend_from_slice(&message);
+    }
+
+    encoded
+}
+
+fn process_message(ctx: &mut Context, message: Message) -> Message {
     match message.get_command() {
         Command::Update => {
-            let node = ctx.dag.gen_node(message.message, Some(ctx.cursor));
+            let node = ctx.dag.gen_node(message.message, Some(ctx.cursor.clone()));
             ctx.dag.add_node(node, None);
-            Message::new(Command::Update, ctx.clock+1)
+            Message::new(Command::Acknowledge, ctx.clock)
         }
         Command::Query => {
-            let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor));
+            let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
-            let ret = Message::new(Command::Query, ctx.clock+1);
-            todo!("serialize and return change_array");
+            let mut ret = Message::new(Command::Acknowledge, ctx.clock);
+            let message = encode_changes(change_array);
+            ret.set_message(message);
             ret 
         }
+        Command::Acknowledge => {
+            Message::error(ctx.clock, "Request is syntactically correct but Acknowledges cannot be processed.".to_string())
+        }
         Command::Unknown => {
-            Message::new(Command::Error, ctx.clock + 1)
+            Message::error(ctx.clock, "Request is syntactically correct but Unknowns cannot be processed.".to_string())
         }
         Command::Error => {
-            Message::new(Command::Error, ctx.clock+1)
+            Message::error(ctx.clock, "Request is syntactically correct but Errors cannot be processed.".to_string())
         }
     }
 }
