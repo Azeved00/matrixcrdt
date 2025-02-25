@@ -1,31 +1,32 @@
 export default class MessageProcessor {
-  constructor() {
-    this.counterQueue = [];
-    this.messageBuffer = new Map();
-  }
-
-  enqueueCounter(counter) {
-    this.counterQueue.push(counter);
-  }
-
-  processMessage(message) {
-    if (this.counterQueue.length === 0) {
-      console.warn("No expected counter in queue");
-      return;
+    constructor() {
+        this.counterQueue = [];
+        this.messageBuffer = new Map();
     }
 
-    if (this.counterQueue[0] === message.clock) {
-      console.log("Processing message:", message);
-      this.counterQueue.shift();
-
-      while (this.messageBuffer.has(this.counterQueue[0])) {
-        const nextMessage = this.messageBuffer.get(this.counterQueue[0]);
-        this.messageBuffer.delete(this.counterQueue[0]);
-        this.processMessage(nextMessage, this.counterQueue[0]);
-      }
-    } else {
-      console.log("Storing message for later:", message);
-      this.messageBuffer.set(message.clock, message);
+    enqueueCounter(counter, callback) {
+        this.counterQueue.push( { clock: counter, callback: callback } );
     }
-  }
+
+    processMessage(message) {
+        if (this.counterQueue.length === 0) {
+            console.warn("No expected counter in queue");
+            return;
+        }
+
+        if (this.counterQueue[0].clock === message.clock) {
+            console.log("Processing message:", message);
+            this.counterQueue[0].callback(message.data);
+
+            this.counterQueue.shift();
+            while (this.counterQueue.length > 0 && this.messageBuffer.has(this.counterQueue[0].clock)) {
+                const nextMessage = this.messageBuffer.get(this.counterQueue[0].clock);
+                this.messageBuffer.delete(this.counterQueue[0].clock);
+                this.processMessage(nextMessage, this.counterQueue[0].clock);
+            }
+        } else {
+            console.log("Storing message for later:", message);
+            this.messageBuffer.set(message.clock, message);
+        }
+    }
 }
