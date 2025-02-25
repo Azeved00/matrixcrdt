@@ -20,7 +20,6 @@ socket.connect(20076, "127.0.0.1", () => {
 });
 socket.on("data", (data) => {
     console.log("message received");
-    console.log(data);
     let message = Message.deserialize(data);
     msgProc.processMessage(message);
 });
@@ -78,7 +77,7 @@ app.delete('/map/:key', (req, res) => {
 app.get('/save', (_req, res) => {
     const delta = dcrdtLib.getChanges(dcrdt);
     let message = new Message(0, clock, delta);
-    msgProc.enqueueCounter(clock, (data) => {
+    msgProc.enqueueCounter(clock, (_data) => {
         console.log("Saved Successfuly");
     });
     clock += 1n;
@@ -91,7 +90,9 @@ app.get('/query', (_req, res) => {
     let message = new Message(1, clock, "");
     msgProc.enqueueCounter(clock, (data) => {
         console.log("hello query");
-        console.log(data);
+        const jsonString = data.toString("utf-8");
+        const array = JSON.parse(jsonString);
+        console.log(array)
     });
     clock += 1n;
     socket.write(message.serialize())

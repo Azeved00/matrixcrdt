@@ -4,7 +4,7 @@ export default class Message {
     constructor(code, clock, message) {
         this.code = code;
         this.clock = BigInt(clock);
-        this.message = typeof message === "object" && message !== null ? message : { data: message };    
+        this.data = message;    
     }
 
 
@@ -16,7 +16,7 @@ export default class Message {
         const clockBuffer = Buffer.alloc(8);
         clockBuffer.writeBigUInt64BE(this.clock, 0);
 
-        const messageBuffer = Buffer.from(msgpack.encode(this.message));
+        const messageBuffer = Buffer.from(msgpack.encode(this.data));
         const messageLengthBuffer = Buffer.alloc(8);
         messageLengthBuffer.writeBigUInt64BE(BigInt(messageBuffer.length), 0);
 
@@ -36,16 +36,7 @@ export default class Message {
         const messageLength = buffer.readBigUInt64BE(offset);
         offset += 8;
 
-        let data = "";
-        if (messageLength > 0) {
-            const messageBuffer = buffer.slice(offset, offset + Number(messageLength));
-            data = msgpack.decode(messageBuffer);
-        }
-
-        // Ensure message is always an object
-        if (typeof data !== "object" || data === null || Array.isArray(data)) {
-            data = { data: data};
-        }
+        const data = buffer.slice(offset, offset + Number(messageLength));
 
         return new Message(code, clock, data);
     }

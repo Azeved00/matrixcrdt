@@ -1,6 +1,7 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::cmp;
+use serde_json;
 
 use auth_crdt::{AuthDag, QueryCursor};
 
@@ -30,8 +31,8 @@ fn handle_connection(mut stream: TcpStream) {
         }
 
         println!("received new message");
-        println!("{:?}", header);
         let mut msg = Message::header_from_bytes(&header).unwrap();
+        println!("{:?}", msg);
 
         ctx.clock = cmp::max(ctx.clock, msg.clock);
 
@@ -43,28 +44,11 @@ fn handle_connection(mut stream: TcpStream) {
         msg.message = buffer;
 
         let answer = process_message(&mut ctx, msg);
-        println!("{:?}", answer);
         let ser_answer = answer.to_bytes();
-        println!("{:?}", ser_answer);
 
         stream.write_all(&ser_answer).unwrap();
         ctx.clock += 1;
     }
-}
-
-fn encode_changes(messages: Vec<Vec<u8>>) -> Vec<u8> {
-    let mut encoded = Vec::new();
-
-    let num_messages = messages.len() as u64;
-    encoded.extend_from_slice(&num_messages.to_le_bytes());
-
-    for message in messages {
-        let length = message.len() as u64;
-        encoded.extend_from_slice(&length.to_le_bytes());
-        encoded.extend_from_slice(&message);
-    }
-
-    encoded
 }
 
 fn process_message(ctx: &mut Context, message: Message) -> Message {
@@ -78,8 +62,9 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
             let mut ret = Message::new(Command::Acknowledge, ctx.clock);
-            let message = encode_changes(change_array);
-            ret.set_message(message);
+            let json_str = serde_json::to_string(&change_array)
+                .expect("Failed to serialize the array to JSON");
+            ret.set_message(json_str.as_bytes().to_vec());
             ret 
         }
         Command::Acknowledge => {
