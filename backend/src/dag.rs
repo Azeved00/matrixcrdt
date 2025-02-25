@@ -376,4 +376,33 @@ mod tests {
         assert!(dag.add_node(node).is_err(), "Node whose parents were not in the dag was added");
         assert_eq!(dag.len(), 1);
     }
+
+    #[test]
+    fn querying(){
+        let mut dag = MerkleDag::<Vec<u8>>::new();
+        let key : Vec<u8> = "".to_string().into();
+
+        for i in 0..10 as usize {
+            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
+            dag.add_node(node).unwrap();
+        }
+
+        let (changes, cursor) = dag.query(None);
+        let len1 = changes.len();
+        assert_eq!(len1, dag.len());
+            
+        for i in 10..20 as usize {
+            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
+            dag.add_node(node).unwrap();
+        }
+
+        let (changes, _c) = dag.query(None);
+        assert_eq!(changes.len(), dag.len(), "Querying without cursor, outputs the full dag");
+
+        let (changes, cursor2) = dag.query(Some(cursor));
+        assert_eq!(changes.len() + len1, dag.len(), "Querying with cursor outputs the new nodes");
+
+        let (changes, _c) = dag.query(Some(cursor2));
+        assert_eq!(changes.len() , 0 , "Querying twice in a row (with cursor) outputs empty changes array");
+    }
 }
