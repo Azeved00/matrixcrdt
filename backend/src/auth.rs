@@ -90,8 +90,21 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     }
 
     /// Verify the authenticated merkle dag
+    ///
+    /// This function verifies the DAG, this means that
+    /// 1. the hashes in each of the nodes are correct and
+    /// 2. all parents of all nodes are inside the graph
+    /// if these conditions are met then `true` is returned
     pub fn verify(&self) -> bool {
-        self.dag.verify::<D>(&self.key)
+        self.dag.dag.values().all(|node| 
+            node.verify::<D>(&self.key) &&
+            node.parents.iter().all(|parent_hash| {
+                if let Some(_) = self.dag.dag.get(parent_hash) {
+                    true
+                } else {
+                    false
+                }
+        }))
     }
 
     /// Calculate the union between `self` and `d`
@@ -99,6 +112,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     /// This function first check if d is fully contained by d
     /// if yes then nothing is done
     /// otherwise union of dags is performed
+    #[deprecated]
     pub fn union(&mut self,d : MerkleDag<O>) -> bool{
         let all_inside = d.heads.keys().all(|leaf| {
             let x = self.dag.get_node(leaf);

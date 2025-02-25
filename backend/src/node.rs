@@ -162,11 +162,13 @@ mod tests {
     #[test]
     fn verification() {
         let key : Vec<u8> = "".to_string().into();
+        let key2 : Vec<u8> = "123".to_string().into();
         let data: Vec<u8> = vec![];
 
         let mut node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &data, &vec![vec![]], 0);
 
         assert!(node.verify::<Sha3_256>(&key));
+        assert!(!node.verify::<Sha3_256>(&key2));
         
         node.data = vec![1,2];
 

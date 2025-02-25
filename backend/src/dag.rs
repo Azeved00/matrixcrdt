@@ -4,6 +4,7 @@ use std::vec::Vec;
 use std::collections::BTreeMap;
 use std::collections::{HashSet, HashMap, BinaryHeap, VecDeque};
 use std::cmp;
+use std::io;
 use digest::{
     Digest, HashMarker,
     core_api::*,
@@ -29,10 +30,10 @@ use super::QueryCursor;
 pub struct MerkleDag<O>
   where O: Clone, O: Into<Vec<u8>>, O: Debug,
 {
-    dag: BTreeMap<Hash, Node<O>>,
+    pub(super) dag: BTreeMap<Hash, Node<O>>,
     partial: bool,
     top_layer: usize,
-    pub (super)heads: BTreeMap<Hash, Node<O>>,
+    pub(super) heads: BTreeMap<Hash, Node<O>>,
 }
 
 
@@ -44,7 +45,7 @@ impl<O> MerkleDag<O>
     pub fn new() -> Self {
         Self{ 
             dag: BTreeMap::new(), 
-            partial: true,
+            partial: false,
             top_layer: 0,
             heads: BTreeMap::new(), 
         }
@@ -71,15 +72,17 @@ impl<O> MerkleDag<O>
     /// This method has temporal complexity: O(p. log n) where
     ///     p is number of parents of the node
     ///     n is the number of nodes of the graph
-    pub fn add_node(&mut self, node: Node<O>){
+    pub fn add_node(&mut self, node: Node<O>) -> io::Result<()>
+    {
+        if self.dag.contains_key(&node.hash){
+            return Ok(())
+        }
+
         for parent_hash in &node.parents {
             let parent = self.dag.get(parent_hash);
             match parent {
                 None => {
-                    if !self.partial {
-                        error!("NOT ALL PARENTS ARE IN THE NODE");
-                    }
-                    return;
+                    return Err(io::Error::new(io::ErrorKind::Other, "Not all parents of the node are in the Dag"));
                 }
                 Some(_) => {}
             }
@@ -91,6 +94,8 @@ impl<O> MerkleDag<O>
         self.top_layer = cmp::max(self.top_layer, node.layer);
         self.dag.insert(node.hash.clone(),node.clone());
         self.heads.insert(node.hash.clone(),node.clone());
+
+        return Ok(())
     }
 
     /// This function verifies the input `dag` against this dag
@@ -114,33 +119,6 @@ impl<O> MerkleDag<O>
     {
         todo!("what do i do here");
     }
-
-    /// This function verifies the DAG, this means that
-    /// 1. the hashes in each of the nodes are correct and
-    /// 2. all parents of all nodes are inside the graph
-    /// if these conditions are met then `true` is returned
-    pub fn verify<D>(&self, key: &Vec<u8>) -> bool
-        where 
-            D: Digest,
-            D: CoreProxy,
-            D::Core: HashMarker + 
-                UpdateCore + 
-                FixedOutputCore + 
-                BufferKindUser<BufferKind = Eager> + 
-                Default + Clone,
-            <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
-            Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
-    {
-        self.dag.values().all(|node| 
-            node.verify::<D>(&key) &&
-            node.parents.iter().all(|parent_hash| {
-                if let Some(_) = self.dag.get(parent_hash) {
-                    true
-                } else {
-                    false
-                }
-        }))
-    }
     
     /// Merge MerkleDag `dag` into `self`
     /// This means that all of the Nodes in `dag` which are not in `self`
@@ -149,6 +127,7 @@ impl<O> MerkleDag<O>
     /// Complefity $O(N+v)$ where 
     /// $N$ is the number of nodes and 
     /// $E$ is the number of conections between nodes
+    #[deprecated]
     pub fn union(&mut self, dag:Self) {
         let mut stack : Vec<&Node<O>> = Vec::new();
 
@@ -373,6 +352,7 @@ impl<O>Debug for MerkleDag<O>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha3::Sha3_256;
 
     #[test]
     fn initialization() {
@@ -383,6 +363,17 @@ mod tests {
     }
     
     #[test]
-    fn adding(){
+    fn insertion(){
+        let mut dag = MerkleDag::<Vec<u8>>::new();
+
+        let key : Vec<u8> = "".to_string().into();
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![], &vec![], 0);
+
+        assert!(dag.add_node(node).is_ok(), "Node was not added correctly");
+        assert_eq!(dag.len(), 1);
+
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![1,2,3], &vec![vec![1]], 0);
+        assert!(dag.add_node(node).is_err(), "Node whose parents were not in the dag was added");
+        assert_eq!(dag.len(), 1);
     }
 }
