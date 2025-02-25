@@ -31,7 +31,7 @@ socket.on("close", () => {
 app.use(express.json());
 
 app.get('/', (_req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(__dirname + '/pages/index.html');
 });
 
 // Get all key-value pairs
