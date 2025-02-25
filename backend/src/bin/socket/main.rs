@@ -41,10 +41,11 @@ fn handle_connection(mut stream: TcpStream) {
             break;
         }
         msg.message = buffer;
-        println!("{:?}", msg);
 
         let answer = process_message(&mut ctx, msg);
+        println!("{:?}", answer);
         let ser_answer = answer.to_bytes();
+        println!("{:?}", ser_answer);
 
         stream.write_all(&ser_answer).unwrap();
         ctx.clock += 1;
