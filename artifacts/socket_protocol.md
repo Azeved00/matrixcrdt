@@ -13,7 +13,11 @@ an operation id, for differentiating between the different operations (more abou
 |---|---|---| --- |
 | operation code | message clock | message length | message |
 
-note that `|message| == n`
+### Notes
+1. all integers(clock, length and operation specific)
+are coded in **big endian** format.
+
+2. `|message| == n`
 
 ## Operations
 
