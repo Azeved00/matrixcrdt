@@ -4,6 +4,8 @@ import path     from "path";
 import dcrdtLib from './lib/delta-crdt/frontend/index.js';
 import MessageProcessor from "./src/processor.js";
 import Message from "./src/message.js";
+import msgpack from "@msgpack/msgpack";
+import { BSON, EJSON, ObjectId } from 'bson';
 
 
 const __dirname = path.resolve(path.dirname(''))
@@ -13,6 +15,7 @@ const app = express();
 const port = 3000;
 let clock = 0n;
 let msgProc = new MessageProcessor();
+let last_change = "";
 
 // Set up socket to Auth Dag
 socket.connect(20076, "127.0.0.1", () => {
@@ -76,7 +79,9 @@ app.delete('/map/:key', (req, res) => {
 
 app.get('/save', (_req, res) => {
     const delta = dcrdtLib.getChanges(dcrdt);
-    let message = new Message(0, clock, delta);
+    last_change = delta;
+    const ser_delta = msgpack.encode(delta);
+    let message = new Message(0, clock, ser_delta);
     msgProc.enqueueCounter(clock, (_data) => {
         console.log("Saved Successfuly");
     });
@@ -89,10 +94,17 @@ app.get('/save', (_req, res) => {
 app.get('/query', (_req, res) => {
     let message = new Message(1, clock, "");
     msgProc.enqueueCounter(clock, (data) => {
-        console.log("hello query");
         const jsonString = data.toString("utf-8");
         const array = JSON.parse(jsonString);
-        console.log(array)
+
+        for (const ser_change of array) {
+            let change = msgpack.decode(ser_change)
+            console.log(last_change)
+            console.log(change)
+            dcrdtLib.applyChanges(dcrdt, change)
+        }
+
+        console.log("Queried Changes("+ array.length+ ") applied succesfuly")
     });
     clock += 1n;
     socket.write(message.serialize())
@@ -106,3 +118,6 @@ app.get('/query', (_req, res) => {
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
+
+
+

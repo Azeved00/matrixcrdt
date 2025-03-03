@@ -5,6 +5,7 @@ export default class Message {
         this.code = code;
         this.clock = BigInt(clock);
         this.data = message;    
+        this.length = BigInt(message.length);
     }
 
 
@@ -16,9 +17,9 @@ export default class Message {
         const clockBuffer = Buffer.alloc(8);
         clockBuffer.writeBigUInt64BE(this.clock, 0);
 
-        const messageBuffer = Buffer.from(msgpack.encode(this.data));
+        const messageBuffer = Buffer.from(this.data);
         const messageLengthBuffer = Buffer.alloc(8);
-        messageLengthBuffer.writeBigUInt64BE(BigInt(messageBuffer.length), 0);
+        messageLengthBuffer.writeBigUInt64BE(this.length, 0);
 
         return Buffer.concat([codeBuffer, clockBuffer, messageLengthBuffer, messageBuffer]);
     }
