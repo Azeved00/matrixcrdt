@@ -1,5 +1,6 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
+use std::sync::{Arc, RwLock};
 use std::cmp;
 use serde_json;
 
@@ -10,19 +11,12 @@ use crate::message::{Message, Command};
 
 struct Context {
     pub clock: u64,
-    pub dag: AuthDag,
+    pub dag: Arc<RwLock<AuthDag>>,
     pub cursor: QueryCursor,
-    
 }
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
     let mut header = [0; 17];
-    let mut ctx = Context {
-        clock: 0,
-        dag: AuthDag::new("My super secret Key".to_string().into()),
-        cursor: QueryCursor::default(),
-    };
-
 
     loop {
         if stream.read_exact(&mut header).is_err() {
@@ -54,12 +48,16 @@ fn handle_connection(mut stream: TcpStream) {
 fn process_message(ctx: &mut Context, message: Message) -> Message {
     match message.get_command() {
         Command::Update => {
-            let node = ctx.dag.gen_node(message.message, Some(ctx.cursor.clone()));
-            ctx.dag.add_node(node, None);
+            let mut dag = ctx.dag.write().unwrap();
+
+            let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
+            ctx.cursor = dag.add_node(node, Some(ctx.cursor.clone()));
             Message::new(Command::Acknowledge, ctx.clock)
         }
         Command::Query => {
-            let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor.clone()));
+            let dag = ctx.dag.read().unwrap();
+
+            let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
             let mut ret = Message::new(Command::Acknowledge, ctx.clock);
             let json_str = serde_json::to_string(&change_array)
@@ -83,6 +81,8 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 async fn main() -> std::io::Result<()>  {
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
+    let dag = AuthDag::new("My super secret Key".to_string().into());
+    let dag_ref = Arc::new(RwLock::new(dag));
 
     loop {
         match listener.accept(){
@@ -92,8 +92,13 @@ async fn main() -> std::io::Result<()>  {
             },
             Ok((socket, addr)) => {
                 println!("new client: {addr:?}");
+                let mut ctx = Context {
+                    clock: 0,
+                    dag: Arc::clone(&dag_ref),
+                    cursor: QueryCursor::default(),
+                };
                 tokio::spawn(async move {
-                    handle_connection(socket);
+                    handle_connection(socket, ctx);
                 });
             },
         }
