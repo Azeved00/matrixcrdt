@@ -92,7 +92,7 @@ async fn main() -> std::io::Result<()>  {
             },
             Ok((socket, addr)) => {
                 println!("new client: {addr:?}");
-                let mut ctx = Context {
+                let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
                     cursor: QueryCursor::default(),
