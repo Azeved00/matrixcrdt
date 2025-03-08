@@ -22,7 +22,7 @@
         devShells."${system}" = {
             rust-dev = pkgs.mkShell {
                 inherit ROOT;
-                name = "Rust Dev Env";
+                name = "Rust Dev";
 
                 buildInputs = with pkgs; [
                     #cargo rustc 
@@ -41,7 +41,7 @@
             };
             js-dev = pkgs.mkShell {
                 inherit ROOT;
-                name = "JS Dev Env";
+                name = "JS Dev";
 
                 buildInputs = with pkgs; [
                     nodejs_23
@@ -51,10 +51,25 @@
 
                 shellHook = '''';
             };
+            python = pkgs.mkShell {
+                inherit ROOT;
+                name = "graphing";
+
+                buildInputs = with pkgs; [
+                    (python3.withPackages (pp: with pp;[
+                        pandas
+                        matplotlib
+                        pyqtwebengine
+                    ]))
+                ];
+
+                shellHook = '''';
+            };
+
 
             run = pkgs.mkShell {
                 inherit ROOT;
-                name = "Run Env";
+                name = "running";
 
                 buildInputs = with pkgs;[
                     nodejs_23
