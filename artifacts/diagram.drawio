@@ -91,87 +91,90 @@
     </mxGraphModel>
   </diagram>
   <diagram id="gJYRMGLHahNtSVUl9VUo" name="Benchmarks">
-    <mxGraphModel dx="2003" dy="1151" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1209" dy="549" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="Korizs5dudR8MgITLonc-1" value="Rust Backend" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="Korizs5dudR8MgITLonc-1" value="Rust Backend" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="330" y="390" width="480" height="390" as="geometry" />
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-3" value="Thread 2" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="Korizs5dudR8MgITLonc-1">
+        <mxCell id="Korizs5dudR8MgITLonc-3" value="Thread 2" style="rounded=1;whiteSpace=wrap;html=1;" parent="Korizs5dudR8MgITLonc-1" vertex="1">
           <mxGeometry x="-85" y="160" width="190" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-6" value="Authenticated Merkle DAG" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="Korizs5dudR8MgITLonc-1">
+        <mxCell id="Korizs5dudR8MgITLonc-6" value="Authenticated Merkle DAG" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="Korizs5dudR8MgITLonc-1" vertex="1">
           <mxGeometry x="170" y="110" width="270" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.088;entryY=0.503;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="Korizs5dudR8MgITLonc-1" source="Korizs5dudR8MgITLonc-3" target="Korizs5dudR8MgITLonc-6">
+        <mxCell id="Korizs5dudR8MgITLonc-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.088;entryY=0.503;entryDx=0;entryDy=0;entryPerimeter=0;" parent="Korizs5dudR8MgITLonc-1" source="Korizs5dudR8MgITLonc-3" target="Korizs5dudR8MgITLonc-6" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-11" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.177;entryY=0.806;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="Korizs5dudR8MgITLonc-1" target="Korizs5dudR8MgITLonc-6">
+        <mxCell id="Korizs5dudR8MgITLonc-11" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.177;entryY=0.806;entryDx=0;entryDy=0;entryPerimeter=0;" parent="Korizs5dudR8MgITLonc-1" target="Korizs5dudR8MgITLonc-6" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="105" y="320" as="sourcePoint" />
             <mxPoint x="246" y="367" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-2" value="Thread 1" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="Korizs5dudR8MgITLonc-2" value="Thread 1" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="245" y="430" width="190" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-4" value="Thread 3" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="Korizs5dudR8MgITLonc-4" value="Thread 3" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="245" y="670" width="190" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="Korizs5dudR8MgITLonc-10" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.301;entryY=0.143;entryDx=0;entryDy=0;entryPerimeter=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="Korizs5dudR8MgITLonc-2" target="Korizs5dudR8MgITLonc-6">
+        <mxCell id="Korizs5dudR8MgITLonc-10" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.301;entryY=0.143;entryDx=0;entryDy=0;entryPerimeter=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="Korizs5dudR8MgITLonc-2" target="Korizs5dudR8MgITLonc-6" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="440" y="480" as="sourcePoint" />
             <mxPoint x="480" y="430" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="XDKcrZotJRd326DWV2wQ-3" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;width=26.896551724137932;endSize=5.779310344827587;" edge="1" parent="1">
+        <mxCell id="XDKcrZotJRd326DWV2wQ-3" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;width=26.896551724137932;endSize=5.779310344827587;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="100" y="474.65999999999997" as="sourcePoint" />
             <mxPoint x="245" y="474.65999999999997" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="XDKcrZotJRd326DWV2wQ-7" value="Client 1 messages" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="XDKcrZotJRd326DWV2wQ-3">
+        <mxCell id="XDKcrZotJRd326DWV2wQ-7" value="Client 1 messages" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="XDKcrZotJRd326DWV2wQ-3" vertex="1" connectable="0">
           <mxGeometry x="-0.5115" y="-4" relative="1" as="geometry">
             <mxPoint x="25" y="-4" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="XDKcrZotJRd326DWV2wQ-5" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;width=26.896551724137932;endSize=5.779310344827587;" edge="1" parent="1">
+        <mxCell id="XDKcrZotJRd326DWV2wQ-5" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;width=26.896551724137932;endSize=5.779310344827587;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="100" y="600" as="sourcePoint" />
             <mxPoint x="245" y="600" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="XDKcrZotJRd326DWV2wQ-8" value="Client 2 messages" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="XDKcrZotJRd326DWV2wQ-5">
+        <mxCell id="XDKcrZotJRd326DWV2wQ-8" value="Client 2 messages" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="XDKcrZotJRd326DWV2wQ-5" vertex="1" connectable="0">
           <mxGeometry x="-0.1025" y="1" relative="1" as="geometry">
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="XDKcrZotJRd326DWV2wQ-6" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;width=26.896551724137932;endSize=5.779310344827587;" edge="1" parent="1">
+        <mxCell id="XDKcrZotJRd326DWV2wQ-6" value="" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;width=26.896551724137932;endSize=5.779310344827587;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="100" y="720" as="sourcePoint" />
             <mxPoint x="245" y="720" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="XDKcrZotJRd326DWV2wQ-9" value="Client 3 messages" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="XDKcrZotJRd326DWV2wQ-6">
+        <mxCell id="XDKcrZotJRd326DWV2wQ-9" value="Client 3 messages" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="XDKcrZotJRd326DWV2wQ-6" vertex="1" connectable="0">
           <mxGeometry x="-0.1881" y="-3" relative="1" as="geometry">
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="fmqIz3d7NAKczvJLAuY0-1" value="" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-90;dashed=1;" vertex="1" parent="1">
+        <mxCell id="fmqIz3d7NAKczvJLAuY0-1" value="" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-90;dashed=1;" parent="1" vertex="1">
           <mxGeometry x="145" y="735" width="50" height="170" as="geometry" />
         </mxCell>
-        <mxCell id="fmqIz3d7NAKczvJLAuY0-2" value="These messages are done by sockets using the socket protocol" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+        <mxCell id="fmqIz3d7NAKczvJLAuY0-2" value="These messages are done by sockets using the socket protocol" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" parent="1" vertex="1">
           <mxGeometry x="110" y="840" width="120" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="fmqIz3d7NAKczvJLAuY0-3" value="" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-90;dashed=1;" vertex="1" parent="1">
+        <mxCell id="fmqIz3d7NAKczvJLAuY0-3" value="" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-90;dashed=1;" parent="1" vertex="1">
           <mxGeometry x="485" y="750" width="50" height="170" as="geometry" />
         </mxCell>
-        <mxCell id="fmqIz3d7NAKczvJLAuY0-4" value="This is done by read/write locks as the dag is shared between all threads" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+        <mxCell id="fmqIz3d7NAKczvJLAuY0-4" value="This is done by read/write locks as the dag is shared between all threads" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;dashPattern=8 8;" parent="1" vertex="1">
           <mxGeometry x="450" y="855" width="120" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="fmqIz3d7NAKczvJLAuY0-5" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Benchmarking the DAG&lt;/h1&gt;&lt;p&gt;Benchmarks are done by measuring the time an operation on the dag takes (updating or querying), the time will start counting after a thread acquires the lock (write for updating, read for querying) and stop counting when the operation finishes.&lt;/p&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
-          <mxGeometry x="60" y="80" width="375" height="120" as="geometry" />
+        <mxCell id="fmqIz3d7NAKczvJLAuY0-5" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Benchmarking the DAG&lt;/h1&gt;&lt;p&gt;Benchmarks are done by measuring the time an operation on the dag takes (updating or querying), the time will start counting after a thread acquires the lock (write for updating, read for querying) and stop counting when the operation finishes.&lt;/p&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="900" y="90" width="375" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="9IzVuyE3F7Zcb7mbEnKR-1" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;How Benchmarking will work&lt;/span&gt;&lt;/h1&gt;&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;&lt;span style=&quot;font-size: 12px; font-weight: 400;&quot;&gt;2 frontends doing independent operations on the backend. The backend will keep a file for each frontend (thread) in wich it will save the time it took for those operations.&lt;/span&gt;&lt;/h1&gt;&lt;div&gt;&lt;span style=&quot;font-size: 12px; font-weight: 400;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-size: 12px; font-weight: 400;&quot;&gt;This benchmark will be repeated abount 1000 times, the average times will be calculated and plotted&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="910" y="330" width="430" height="230" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

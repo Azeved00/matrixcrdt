@@ -1,4 +1,4 @@
-# Authenticated CRDTs
+Authenticated CRDTs
 
 ## Features
 ### CRDTs Trait
