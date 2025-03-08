@@ -1,17 +1,22 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
+use std::path::Path;
+use std::time::Instant;
 use std::cmp;
 use serde_json;
 
 use auth_crdt::{AuthDag, QueryCursor};
 
 pub mod message;
+pub mod logger;
 use crate::message::{Message, Command}; 
+use crate::logger::LogFile; 
 
 struct Context {
     pub clock: u64,
     pub dag: Arc<RwLock<AuthDag>>,
+    pub log_file: LogFile,
     pub cursor: QueryCursor,
 }
 
@@ -49,16 +54,26 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
     match message.get_command() {
         Command::Update => {
             let mut dag = ctx.dag.write().unwrap();
+            let start = Instant::now();
 
             let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
             ctx.cursor = dag.add_node(node, Some(ctx.cursor.clone()));
+
+            let time = start.elapsed();
+            ctx.log_file.log(0,"apply".to_string(),time, 0);
+
             Message::new(Command::Acknowledge, ctx.clock)
         }
         Command::Query => {
             let dag = ctx.dag.read().unwrap();
 
+            let start = Instant::now();
             let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
+
+            let time = start.elapsed();
+            ctx.log_file.log(0,"query".to_string(),time, 0);
+
             let mut ret = Message::new(Command::Acknowledge, ctx.clock);
             let json_str = serde_json::to_string(&change_array)
                 .expect("Failed to serialize the array to JSON");
@@ -95,6 +110,8 @@ async fn main() -> std::io::Result<()>  {
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
+                    log_file: LogFile::new(Path::new(&format!("log_{:}_{:}.csv", 
+                                addr, chrono::offset::Utc::now()))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {
