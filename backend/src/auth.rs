@@ -1,4 +1,5 @@
-use std::fmt::{Formatter, Debug, Result};
+use std::fmt::{self, Formatter, Debug};
+use std::io;
 use std::vec::Vec;
 use core::marker::PhantomData;
 use std::collections::HashSet;
@@ -72,11 +73,16 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     }
 
     /// Insert a new node into the authenticated merkle dag,
-    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>) -> QueryCursor {
-        self.dag.add_node(node.clone());
+    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>) -> io::Result<QueryCursor> {
+        if !node.verify::<D>(&self.key) {
+            return Err(io::Error::new(io::ErrorKind::Other, "Hash of node is not properly formed."));
+        }
+        if let Err(err) = self.dag.add_node(node.clone()) {
+            return Err(err);
+        }
         
         match opt_cursor {
-            None => QueryCursor {set: HashSet::from([node.hash.clone()]) },
+            None => Ok(QueryCursor {set: HashSet::from([node.hash.clone()]) }),
             Some(c) => {
                 let mut cursor = c.clone();
                 for parent in &node.parents {
@@ -84,7 +90,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
                 }
                 cursor.set.insert(node.hash.clone());
 
-                return cursor;
+                return Ok(cursor);
             }
         }
     }
@@ -163,9 +169,48 @@ impl<D: Digest,O>Debug for AuthMerkleDag<D, O>
         <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
         Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
 {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("Authenticated Merkle Dag")
             .field("dag", &self.dag)
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sha3::Sha3_256;
+
+    #[test]
+    fn initialization() {
+        let password : Vec<u8> = "random password".to_string().into();
+        let dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password);
+
+        assert_eq!(dag.len(), 0);
+        assert!(dag.verify());
+    }
+    
+    #[test]
+    fn generation_insertion() {
+        let password : Vec<u8> = "random password".to_string().into();
+        let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password);
+        
+        let node = dag.gen_node(vec![1], None);
+        assert_eq!(node.parents.len(), 0);
+        assert_eq!(dag.len(), 0);
+        assert!(dag.verify());
+
+        let mut node_mod = node.clone();
+        node_mod.hash = "".into();
+
+        let res = dag.add_node(node_mod, None);
+        assert!(res.is_err(), "Insertion should fail if node has incorrect hash");
+        assert_eq!(dag.len(), 0);
+        assert!(dag.verify());
+
+        let res = dag.add_node(node, None);
+        assert!(res.is_ok());
+        assert_eq!(dag.len(), 1);
+        assert!(dag.verify());
     }
 }
