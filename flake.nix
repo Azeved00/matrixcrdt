@@ -80,6 +80,7 @@
                     build() {
                         cargo build --color=always 2>&1 | less
                     }
+                    alias bench1="$ROOT/benchmarks/bench1.sh"
                 '';
             };
         };
