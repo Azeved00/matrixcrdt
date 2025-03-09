@@ -57,7 +57,14 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let start = Instant::now();
 
             let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
-            ctx.cursor = dag.add_node(node, Some(ctx.cursor.clone()));
+            let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            match res {
+                Ok(cursor) => {ctx.cursor = cursor;},
+                Err(_err) => {
+                    return Message::new(Command::Error, ctx.clock);
+                }
+            };
+
 
             let time = start.elapsed();
             ctx.log_file.log(0,"apply".to_string(),time, 0);
