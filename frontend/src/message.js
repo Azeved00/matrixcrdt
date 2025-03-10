@@ -1,5 +1,3 @@
-import msgpack from "@msgpack/msgpack";
-
 export default class Message {
     constructor(code, clock, message) {
         this.code = code;

@@ -1,7 +1,7 @@
 import net      from "net";
 import express  from 'express';
 import path     from "path";
-import Automerge from "automerge";
+import * as Automerge from "@automerge/automerge";
 import MessageProcessor from "./src/processor.js";
 import Message from "./src/message.js";
 import msgpack from "@msgpack/msgpack";
@@ -10,17 +10,17 @@ const __dirname = path.resolve(path.dirname(''));
 let doc = Automerge.init(); 
 const socket = new net.Socket();
 const app = express();
-const port = 3000;
+const port = process.argv[2] || 3000;
 let clock = 0n;
 let msgProc = new MessageProcessor();
-let last_change = "";
+let changes = [];
 
 // Set up socket to Auth Dag
 socket.connect(20076, "127.0.0.1", () => {
     console.log("Connected to Rust server!");
 });
 socket.on("data", (data) => {
-    console.log("message received");
+    //console.log("message received");
     let message = Message.deserialize(data);
     msgProc.processMessage(message);
 });
@@ -61,6 +61,7 @@ app.post('/map', (req, res) => {
     doc = Automerge.change(doc, d => {
         d[key] = value;
     });
+    changes.push(Automerge.getLastLocalChange(doc));
     res.json({ message: 'Entry added/updated', key, value });
 });
 
@@ -70,13 +71,13 @@ app.delete('/map/:key', (req, res) => {
     doc = Automerge.change(doc, d => {
         delete d[key];
     });
+    changes.push(Automerge.getLastLocalChange(doc));
     res.json({ message: 'Entry deleted', key });
 });
 
 app.get('/save', (_req, res) => {
     // Get all changes from the Automerge document
-    const changes = Automerge.getAllChanges(doc);
-    last_change = changes;
+    //console.log(changes.length)
     const ser_changes = msgpack.encode(changes);
     let message = new Message(0, clock, ser_changes);
     msgProc.enqueueCounter(clock, (_data) => {
@@ -85,6 +86,7 @@ app.get('/save', (_req, res) => {
     clock += 1n;
     socket.write(message.serialize());
 
+    changes = [];
     res.status(200).json();
 });
 

@@ -12,12 +12,12 @@
   "description": "",
   "dependencies": {
     "@msgpack/msgpack": "^3.1.0",
-    "automerge": "^0.14.2",
+    "@automerge/automerge": "^2.2.8",
+    "bson": "^6.10.3",
     "chai": "^4.2.0",
     "express": "^4.21.2",
     "msgpack5": "^3.6.1",
-    "uuid": "^3.4.0",
-    "bson": "^6.10.3"
+    "uuid": "^3.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

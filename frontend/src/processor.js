@@ -15,7 +15,7 @@ export default class MessageProcessor {
         }
 
         if (this.counterQueue[0].clock === message.clock) {
-            console.log("Processing message:", message);
+            console.log("Processing message:", message.clock);
             this.counterQueue[0].callback(message.data);
 
             this.counterQueue.shift();
@@ -25,7 +25,7 @@ export default class MessageProcessor {
                 this.processMessage(nextMessage, this.counterQueue[0].clock);
             }
         } else {
-            console.log("Storing message for later:", message);
+            console.log("Storing message for later:", message.clock);
             this.messageBuffer.set(message.clock, message);
         }
     }
