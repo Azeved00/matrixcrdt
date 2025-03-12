@@ -2,7 +2,6 @@ use std::fmt::{self, Formatter, Debug};
 use std::io;
 use std::vec::Vec;
 use core::marker::PhantomData;
-use std::collections::HashSet;
 use digest::{
     Digest, HashMarker,
     core_api::*,
@@ -77,22 +76,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
         if !node.verify::<D>(&self.key) {
             return Err(io::Error::new(io::ErrorKind::Other, "Hash of node is not properly formed."));
         }
-        if let Err(err) = self.dag.add_node(node.clone()) {
-            return Err(err);
-        }
-        
-        match opt_cursor {
-            None => Ok(QueryCursor {set: HashSet::from([node.hash.clone()]) }),
-            Some(c) => {
-                let mut cursor = c.clone();
-                for parent in &node.parents {
-                    cursor.set.remove(parent);
-                }
-                cursor.set.insert(node.hash.clone());
-
-                return Ok(cursor);
-            }
-        }
+         return self.dag.add_node(node.clone(), opt_cursor);
     }
 
     /// Verify the authenticated merkle dag

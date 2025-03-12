@@ -5,8 +5,11 @@ use std::path::Path;
 use std::time::Instant;
 use std::cmp;
 use serde_json;
+use sha3::Sha3_256;
 
-use auth_crdt::{AuthDag, QueryCursor};
+use auth_crdt::{dag::MerkleDag, node::Node, QueryCursor};
+
+pub type Dag =  MerkleDag<Vec<u8>>;
 
 pub mod message;
 pub mod logger;
@@ -15,7 +18,7 @@ use crate::logger::LogFile;
 
 struct Context {
     pub clock: u64,
-    pub dag: Arc<RwLock<AuthDag>>,
+    pub dag: Arc<RwLock<Dag>>,
     pub log_file: LogFile,
     pub cursor: QueryCursor,
 }
@@ -56,10 +59,14 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let mut dag = ctx.dag.write().unwrap();
             let start = Instant::now();
 
-            let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
-            let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            let layer = dag.get_top_layer();
+            let parents = dag.get_heads();
+            let key = "".to_string().into();
+            let node = Node::new::<Sha3_256>(&key, &message.message, &parents, layer + 1);
+            let res = dag.add_node(node, None);
+
             match res {
-                Ok(cursor) => {ctx.cursor = cursor;},
+                Ok(..) => {},
                 Err(_err) => {
                     return Message::new(Command::Error, ctx.clock);
                 }
@@ -103,7 +110,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 async fn main() -> std::io::Result<()>  {
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
-    let dag = AuthDag::new("My super secret Key".to_string().into());
+    let dag = MerkleDag::<Vec<u8>>::new();
     let dag_ref = Arc::new(RwLock::new(dag));
 
     loop {

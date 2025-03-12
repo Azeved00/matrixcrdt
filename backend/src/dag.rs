@@ -5,13 +5,6 @@ use std::collections::BTreeMap;
 use std::collections::{HashSet, HashMap, BinaryHeap, VecDeque};
 use std::cmp;
 use std::io;
-use digest::{
-    Digest, HashMarker,
-    core_api::*,
-    typenum::*,
-    block_buffer::Eager,
-    consts::U256,
-};
 use serde::{Serialize, Deserialize};
 
 use super::node::Node;
@@ -72,10 +65,13 @@ impl<O> MerkleDag<O>
     /// This method has temporal complexity: O(p. log n) where
     ///     p is number of parents of the node
     ///     n is the number of nodes of the graph
-    pub fn add_node(&mut self, node: Node<O>) -> io::Result<()>
+    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>) -> io::Result<QueryCursor>
     {
         if self.dag.contains_key(&node.hash){
-            return Ok(())
+            return match opt_cursor {
+                Some(cursor) => Ok(cursor),
+                None => Ok(QueryCursor {set: HashSet::from([node.hash.clone()]) }),
+            }
         }
 
         for parent_hash in &node.parents {
@@ -95,29 +91,18 @@ impl<O> MerkleDag<O>
         self.dag.insert(node.hash.clone(),node.clone());
         self.heads.insert(node.hash.clone(),node.clone());
 
-        return Ok(())
-    }
+        return match opt_cursor {
+            None => Ok(QueryCursor {set: HashSet::from([node.hash.clone()]) }),
+            Some(c) => {
+                let mut cursor = c.clone();
+                for parent in &node.parents {
+                    cursor.set.remove(parent);
+                }
+                cursor.set.insert(node.hash.clone());
 
-    /// This function verifies the input `dag` against this dag
-    ///
-    /// This function assumes `self` is fully verified and 
-    /// seeks to verify the nodes of `dag` that are not in `self`
-    ///
-    /// for a graph to be verified:(1) the hashes in each f the nodes need to be correct and
-    /// (2) for all nodes, all parents are inside the graph (i.e. the graph is total)
-    pub fn verify_other<D>(&self, _dag:Self, _key: &Vec<u8>) -> bool
-        where 
-            D: Digest,
-            D: CoreProxy,
-            D::Core: HashMarker + 
-                UpdateCore + 
-                FixedOutputCore + 
-                BufferKindUser<BufferKind = Eager> + 
-                Default + Clone,
-            <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
-            Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
-    {
-        todo!("what do i do here");
+                return Ok(cursor);
+            }
+        };
     }
     
     /// Merge MerkleDag `dag` into `self`
@@ -369,11 +354,11 @@ mod tests {
         let key : Vec<u8> = "".to_string().into();
         let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![], &vec![], 0);
 
-        assert!(dag.add_node(node).is_ok(), "Node was not added correctly");
+        assert!(dag.add_node(node, None).is_ok(), "Node was not added correctly");
         assert_eq!(dag.len(), 1);
 
         let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![1,2,3], &vec![vec![1]], 0);
-        assert!(dag.add_node(node).is_err(), "Node whose parents were not in the dag was added");
+        assert!(dag.add_node(node, None).is_err(), "Node whose parents were not in the dag was added");
         assert_eq!(dag.len(), 1);
     }
 
@@ -384,7 +369,7 @@ mod tests {
 
         for i in 0..10 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            dag.add_node(node).unwrap();
+            dag.add_node(node, None).unwrap();
         }
 
         let (changes, cursor) = dag.query(None);
@@ -393,7 +378,7 @@ mod tests {
             
         for i in 10..20 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            dag.add_node(node).unwrap();
+            dag.add_node(node, None).unwrap();
         }
 
         let (changes, _c) = dag.query(None);
