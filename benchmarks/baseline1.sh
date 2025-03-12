@@ -1,9 +1,9 @@
-SAMPLE=100
+SAMPLE=10
 APPLY_N=5
 LOGS="./logs"
 
 # start  backend
-cargo run --manifest-path ./backend/Cargo.toml --bin socket &
+cargo run --manifest-path ./backend/Cargo.toml --bin baseline &
 while ! nc -z localhost 20076; do
     sleep 0.1
 done
