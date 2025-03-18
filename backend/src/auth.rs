@@ -57,18 +57,28 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
         return self.dag.len();
     }
 
-    /// Generate a node from the current merkle dag
+
+    /// Insert data into the dag
     ///
-    /// it's parents will be the heads of the merkle dag 
+    /// the parents of the new node will be the heads of the merkle dag 
     /// or, in the case a cursor is given, the heads represented by the cursor
-    pub fn gen_node(&self, data: O, opt_cursor: Option<QueryCursor>) -> Node<O> {
-        let parents = match opt_cursor{
+    pub fn insert(&mut self, data: O, opt_cursor: Option<QueryCursor>) 
+        -> io::Result<(Node<O>, QueryCursor)>
+    {
+        let parents = match opt_cursor.clone() {
             None => self.dag.get_heads(),
             Some(cursor) => cursor.set.into_iter().collect(),
         };
         let layer = self.dag.get_top_layer();
         let node = Node::new::<D>(&self.key, &data, &parents, layer + 1);
-        node
+         
+        if !node.verify::<D>(&self.key) {
+            return Err(io::Error::new(io::ErrorKind::Other, "Hash of node is not properly formed."));
+        }
+        match self.dag.add_node(node.clone(), opt_cursor) {
+            Ok(cursor) => Ok((node, cursor)),
+            Err(err) => Err(err),
+        }
     }
 
     /// Insert a new node into the authenticated merkle dag,
@@ -179,7 +189,7 @@ mod tests {
         let password : Vec<u8> = "random password".to_string().into();
         let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password);
         
-        let node = dag.gen_node(vec![1], None);
+        let (node, _) = dag.insert(vec![1], None).unwrap();
         assert_eq!(node.parents.len(), 0);
         assert_eq!(dag.len(), 0);
         assert!(dag.verify());
@@ -204,18 +214,14 @@ mod tests {
         let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password.clone());
 
         for i in 0..10 as u8 {
-            let node = dag.gen_node(vec![i], None);
-            dag.add_node(node, None).unwrap();
+            let _= dag.insert(vec![i], None).unwrap();
         }
 
-        let node42 = dag.gen_node(vec![42], None);
-        let node42_hash = node42.hash.clone();
-        dag.add_node(node42, None).unwrap();
+        let (node42, _) = dag.insert(vec![42], None).unwrap();
+        let node42_hash = node42.hash;
 
-        let node76 = dag.gen_node(vec![76], None);
+        let (_node76, _) = dag.insert(vec![76], None).unwrap();
         //let node76_hash = node76.hash.clone();
-        dag.add_node(node76, None).unwrap();
-
         assert!(dag.verify(), "Verification should be fine");
 
         let node42 = dag.dag.dag.remove(&node42_hash).unwrap();

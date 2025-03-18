@@ -56,10 +56,9 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let mut dag = ctx.dag.write().unwrap();
             let start = Instant::now();
 
-            let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
-            let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            let res = dag.insert(message.message, Some(ctx.cursor.clone()));
             match res {
-                Ok(cursor) => {ctx.cursor = cursor;},
+                Ok((_node, cursor)) => {ctx.cursor = cursor;},
                 Err(_err) => {
                     return Message::new(Command::Error, ctx.clock);
                 }

@@ -96,8 +96,10 @@ impl AuthDag
 
     /// Send update to other users
     pub async fn send_update(&mut self, cmd: String) {
-        let dag= self.dag.read().await;
-        let node = dag.gen_node(cmd, Some(self.cursor.clone()));
+        let mut dag= self.dag.write().await;
+        let (node, cursor) = dag.insert(cmd, Some(self.cursor.clone()))
+            .expect("failed to insert new node into dag");
+        self.cursor = cursor;
 
         let content = UpdateEventContent {
             cmd: node,
@@ -167,5 +169,5 @@ async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference
 
 
     let mut dag = ctx.write().await;
-    dag.add_node(original.content.cmd.clone(), None);
+    let _ = dag.add_node(original.content.cmd.clone(), None);
 }
