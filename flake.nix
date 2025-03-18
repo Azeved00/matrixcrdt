@@ -63,7 +63,18 @@
                     ]))
                 ];
 
-                shellHook = '''';
+                shellHook = ''
+                    plot-box() {
+                        pushd $ROOT/logs
+                        python3 $ROOT/scripts/box_plot.py
+                        popd
+                    }
+                    plot-line() {
+                        pushd $ROOT/logs
+                        python3 $ROOT/scripts/line_plot.py
+                        popd
+                    }
+                '';
             };
 
 
