@@ -167,5 +167,5 @@ async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference
 
 
     let mut dag = ctx.write().await;
-    dag.add_node(original.content.cmd.clone(), None);
+    let _ = dag.add_node(original.content.cmd.clone(), None);
 }

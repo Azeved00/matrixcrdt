@@ -7,9 +7,6 @@ edition = "2021"
 [lib]
 name = "auth_crdt"
 
-#[[bin]]
-#name="matrix"
-
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 tokio = { version = "1", features = ["full"] }
@@ -33,3 +30,5 @@ hmac = "0.12.1"
 log = "0.4.22"
 chrono = "0.4.38"
 env_logger = "0.9.0"
+
+

@@ -63,10 +63,10 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let parents = dag.get_heads();
             let key = "".to_string().into();
             let node = Node::new::<Sha3_256>(&key, &message.message, &parents, layer + 1);
-            let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            let res = dag.add_node(node, None);
 
             match res {
-                Ok(cursor) => { ctx.cursor = cursor; },
+                Ok(..) => {},
                 Err(_err) => {
                     return Message::new(Command::Error, ctx.clock);
                 }
@@ -82,7 +82,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let dag = ctx.dag.read().unwrap();
 
             let start = Instant::now();
-            let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
+            let (change_array, cursor) = dag.query(None);
             ctx.cursor = cursor;
 
             let time = start.elapsed();
