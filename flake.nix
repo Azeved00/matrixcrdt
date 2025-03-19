@@ -91,7 +91,9 @@
                     build() {
                         cargo build --color=always 2>&1 | less
                     }
-                    alias bench1="$ROOT/benchmarks/bench1.sh"
+                    alias bench1="$ROOT/benchmarks/bench1.sh && $ROOT/benchmarks/baseline1.sh"
+                    alias bench2="$ROOT/benchmarks/bench2.sh && $ROOT/benchmarks/baseline2.sh"
+                    alias bench3="$ROOT/benchmarks/bench3.sh && $ROOT/benchmarks/baseline3.sh"
                 '';
             };
         };
