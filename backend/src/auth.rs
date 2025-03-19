@@ -197,4 +197,41 @@ mod tests {
         assert_eq!(dag.len(), 1);
         assert!(dag.verify());
     }
+
+    #[test]
+    fn verifying(){
+        let password : Vec<u8> = "random password".to_string().into();
+        let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password.clone());
+
+        for i in 0..10 as u8 {
+            let node = dag.gen_node(vec![i], None);
+            dag.add_node(node, None).unwrap();
+        }
+
+        let node42 = dag.gen_node(vec![42], None);
+        let node42_hash = node42.hash.clone();
+        dag.add_node(node42, None).unwrap();
+
+        let node76 = dag.gen_node(vec![76], None);
+        //let node76_hash = node76.hash.clone();
+        dag.add_node(node76, None).unwrap();
+
+        assert!(dag.verify(), "Verification should be fine");
+
+        let node42 = dag.dag.dag.remove(&node42_hash).unwrap();
+        assert!(!dag.verify(), "Verification should fail if a node's parent is not inside the dag");
+        dag.add_node(node42, None).unwrap();
+        assert!(dag.verify(), "Re-inserting the node should restore the verifiability");
+
+        // testing if an unverified node is inside the dag is not necessary
+        // this is assured by the compiler : 
+        // (i) you cant insert an invalid node and 
+        // (ii) you cant modify a node you get from the get method
+        /*let mut node76 : Node<Vec<u8>> = dag.dag.dag.remove(&node76_hash).unwrap().clone();
+        node76.data = vec![0];
+        assert!(!node76.verify::<Sha3_256>(&password));
+        dag.add_node(node76, None).unwrap();
+        assert!(!dag.verify(), "Verification should fail if a node's verification fails");
+        */
+    }
 }
