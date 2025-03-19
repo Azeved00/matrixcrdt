@@ -1,6 +1,6 @@
-SAMPLE=10
+SAMPLE=100
 APPLY_N=5
-LOGS="./logs"
+LOGS="./logs/base1/"
 
 # start  backend
 cargo run --manifest-path ./backend/Cargo.toml --bin baseline &
@@ -30,4 +30,4 @@ jobs -p | xargs kill
 
 # put logs in place
 # take every file and put it at /logs folder
-mv ./*.csv ./logs/
+mv ./*.csv $LOGS
