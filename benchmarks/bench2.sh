@@ -4,21 +4,23 @@ LOGS="./logs/bench2/"
 
 # start  backend
 cargo run --manifest-path ./backend/Cargo.toml --bin socket &
-while ! nc -z localhost 20076; do
+while ! netstat -an | grep LISTEN | grep -q 20076; do
     sleep 0.1
 done
 
 # start  frontend 1
 npm --prefix ./frontend start 3000 &
-while ! nc -z localhost 3000; do
+while ! netstat -an | grep LISTEN | grep -q 3000; do
     sleep 0.1
 done
 
 # start  frontend 2
 npm --prefix ./frontend start 3001 &
-while ! nc -z localhost 3001; do
+while ! netstat -an | grep LISTEN | grep -q 3001; do
     sleep 0.1
 done
+
+
 
 
 # send curl requests to frontend
