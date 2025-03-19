@@ -76,24 +76,15 @@ def plot_boxplot(sets_of_dataframes, group_size=50, labels=("Dataset 1", "Datase
 
     # Set x-axis labels for the aggregated groups
     plt.xticks(np.arange(1, len(all_group_labels) + 1), all_group_labels, rotation=45, fontsize=10)
-    plt.xlabel("ID Groups")
-    plt.ylabel("Time")
-    plt.title("Comparison of Two Data Sets - Box Plot by Aggregated ID Groups")
+    plt.xlabel("Operation Index (groups of 5)")
+    plt.ylabel("Time (ms)")
+    #plt.title("Comparison of Two Data Sets - Box Plot by Aggregated ID Groups")
     
     # Create a custom legend using proxy patches
     blue_patch = mpatches.Patch(color=colors[0], label=labels[0])
     red_patch = mpatches.Patch(color=colors[1], label=labels[1])
     plt.legend(handles=[blue_patch, red_patch], loc="upper left")
     
-    plt.tight_layout()
-    plt.show()
-    
-    # Set x-axis labels
-    plt.xticks(np.arange(1, len(all_group_labels) + 1), all_group_labels, rotation=45, fontsize=10)
-    plt.xlabel("ID Groups")
-    plt.ylabel("Time")
-    plt.title("Comparison of Two Data Sets - Box Plot by Aggregated ID Groups")
-    plt.legend(loc="upper left")
     plt.tight_layout()
     plt.show()
 
@@ -121,5 +112,5 @@ for file in bench_files:
     else:
         print("No data to process.")
 
-plot_boxplot((base_dfs, bench_dfs), 10, ("baseline", "benchmark"))
+plot_boxplot((base_dfs, bench_dfs), 10, ("Baseline", "Benchmark"))
 

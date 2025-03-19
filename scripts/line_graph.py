@@ -57,9 +57,9 @@ def plot_average(sets_of_dataframes, labels=("Dataset 1", "Dataset 2")):
         # Plot
         plt.plot(avg_time_per_id['id'], avg_time_per_id['time'], marker='o', color=color, linestyle='-', label=label)
 
-    plt.xlabel("ID")
-    plt.ylabel("Average Time")
-    plt.title("Comparison of Two Data Sets - Average Time per ID")
+    plt.xlabel("Operation Index")
+    plt.ylabel("Time (ms)")
+    #plt.title("Comparison of Two Data Sets - Average Time per ID")
     plt.legend(loc="upper left")
     
     plt.grid(True, linestyle="--", alpha=0.7)
