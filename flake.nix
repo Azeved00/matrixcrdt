@@ -66,12 +66,12 @@
                 shellHook = ''
                     plot-box() {
                         pushd $ROOT/logs
-                        python3 $ROOT/scripts/box_plot.py
+                        python3 $ROOT/scripts/box_graph.py
                         popd
                     }
                     plot-line() {
                         pushd $ROOT/logs
-                        python3 $ROOT/scripts/line_plot.py
+                        python3 $ROOT/scripts/line_graph.py
                         popd
                     }
                 '';
@@ -91,9 +91,12 @@
                     build() {
                         cargo build --color=always 2>&1 | less
                     }
-                    alias bench1="$ROOT/benchmarks/bench1.sh && $ROOT/benchmarks/baseline1.sh"
-                    alias bench2="$ROOT/benchmarks/bench2.sh && $ROOT/benchmarks/baseline2.sh"
-                    alias bench3="$ROOT/benchmarks/bench3.sh && $ROOT/benchmarks/baseline3.sh"
+                    alias cargo="cargo --manifest-path $ROOT/backend/Cargo.toml"
+                    alias npm="npm --prefix $ROOT/frontend"
+
+                    alias bench1="for i in {1..9}; do $ROOT/benchmarks/bench1.sh && $ROOT/benchmarks/baseline1.sh; done"
+                    alias bench2="for i in {1..9}; do $ROOT/benchmarks/bench2.sh && $ROOT/benchmarks/baseline2.sh; done"
+                    alias bench3="for i in {1..9}; do $ROOT/benchmarks/bench3.sh && $ROOT/benchmarks/baseline3.sh; done"
                 '';
             };
         };
