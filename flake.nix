@@ -91,7 +91,6 @@
                     build() {
                         cargo build --color=always 2>&1 | less
                     }
-                    alias cargo="cargo --manifest-path $ROOT/backend/Cargo.toml"
                     alias npm="npm --prefix $ROOT/frontend"
 
                     alias bench1="for i in {1..9}; do $ROOT/benchmarks/bench1.sh && $ROOT/benchmarks/baseline1.sh; done"
