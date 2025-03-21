@@ -91,7 +91,6 @@
                     build() {
                         cargo build --color=always 2>&1 | less
                     }
-                    alias npm="npm --prefix $ROOT/frontend"
 
                     alias bench1="for i in {1..9}; do $ROOT/benchmarks/bench1.sh && $ROOT/benchmarks/baseline1.sh; done"
                     alias bench2="for i in {1..9}; do $ROOT/benchmarks/bench2.sh && $ROOT/benchmarks/baseline2.sh; done"
