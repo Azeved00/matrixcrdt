@@ -30,7 +30,7 @@ def load_csv(file_path):
 
 def plot_boxplot(sets_of_dataframes, group_size=50, labels=("Dataset 1", "Dataset 2")):
     """
-    Plots two sets of aggregated DataFrames as box plots on the same figure.
+    Plots two sets of aggregated DataFrames as box plots grouped by operation.
     
     Parameters:
     - sets_of_dataframes: A tuple of two lists, each containing DataFrames.
@@ -38,55 +38,68 @@ def plot_boxplot(sets_of_dataframes, group_size=50, labels=("Dataset 1", "Datase
     - labels: Tuple containing labels for the two data sets.
     """
     colors = ['lightblue', 'lightcoral']  # Colors for the two sets
-    all_group_labels = []  # To store x-axis labels
 
-    plt.figure(figsize=(20, 8))
+    # Get all unique operations
+    all_operations = set()
+    for dataframes in sets_of_dataframes:
+        for df in dataframes:
+            if 'operation' in df.columns:
+                all_operations.update(df['operation'].unique())
 
-    for idx, (dataframes, color, label) in enumerate(zip(sets_of_dataframes, colors, labels)):
-        combined_df = pd.concat(dataframes, ignore_index=True)
+    all_operations = sorted(all_operations)
 
-        # Ensure required columns exist
-        if 'id' not in combined_df.columns or 'time' not in combined_df.columns:
-            print("Error: DataFrames must contain 'id' and 'time' columns.")
-            return
+    for operation in all_operations:
+        plt.figure(figsize=(20, 8))
+        all_group_labels = []
 
-        # Sort unique IDs for consistency
-        unique_ids = sorted(combined_df['id'].unique())
+        for idx, (dataframes, color, label) in enumerate(zip(sets_of_dataframes, colors, labels)):
+            combined_df = pd.concat(dataframes, ignore_index=True)
 
-        grouped_boxes = []
-        group_labels = []
+            # Ensure required columns exist
+            if 'id' not in combined_df.columns or 'time' not in combined_df.columns or 'operation' not in combined_df.columns:
+                print("Error: DataFrames must contain 'id', 'time', and 'operation' columns.")
+                return
 
-        for i in range(0, len(unique_ids), group_size):
-            group_ids = unique_ids[i:i+group_size]
-            group_data = combined_df[combined_df['id'].isin(group_ids)]['time'].values
-            grouped_boxes.append(group_data)
-            if idx == 0:  # Store labels only once
-                group_labels.append(f"{group_ids[0]} - {group_ids[-1]}")
+            # Filter by the current operation
+            operation_df = combined_df[combined_df['operation'] == operation]
 
-        # Store labels from the first dataset
-        if idx == 0:
-            all_group_labels = group_labels
+            # Sort unique IDs for consistency
+            unique_ids = sorted(operation_df['id'].unique())
 
-        # Create box plots with a slight x-offset to avoid overlap
-        positions = np.arange(1, len(grouped_boxes) + 1) + (idx * 0.3)
-        plt.boxplot(grouped_boxes, positions=positions, patch_artist=True,
-                    boxprops=dict(facecolor=color), widths=0.3,
-                    medianprops=dict(color='black'),
-                    flierprops=dict(marker='o', markerfacecolor=color, markersize=6, linestyle='none'))
+            grouped_boxes = []
+            group_labels = []
 
-    # Set x-axis labels for the aggregated groups
-    plt.xticks(np.arange(1, len(all_group_labels) + 1), all_group_labels, rotation=45, fontsize=10)
-    plt.xlabel("Operation Index (groups of 5)")
-    plt.ylabel("Time (ms)")
-    #plt.title("Comparison of Two Data Sets - Box Plot by Aggregated ID Groups")
-    
-    # Create a custom legend using proxy patches
-    blue_patch = mpatches.Patch(color=colors[0], label=labels[0])
-    red_patch = mpatches.Patch(color=colors[1], label=labels[1])
-    plt.legend(handles=[blue_patch, red_patch], loc="upper left")
-    
-    plt.tight_layout()
-    plt.show()
+            for i in range(0, len(unique_ids), group_size):
+                group_ids = unique_ids[i:i+group_size]
+                group_data = operation_df[operation_df['id'].isin(group_ids)]['time'].values
+                grouped_boxes.append(group_data)
+                if idx == 0:  # Store labels only once
+                    group_labels.append(f"{group_ids[0]} - {group_ids[-1]}")
+
+            # Store labels from the first dataset
+            if idx == 0:
+                all_group_labels = group_labels
+
+            # Create box plots with a slight x-offset to avoid overlap
+            positions = np.arange(1, len(grouped_boxes) + 1) + (idx * 0.3)
+            plt.boxplot(grouped_boxes, positions=positions, patch_artist=True,
+                        boxprops=dict(facecolor=color), widths=0.3,
+                        medianprops=dict(color='black'),
+                        flierprops=dict(marker='o', markerfacecolor=color, markersize=6, linestyle='none'))
+
+        # Set x-axis labels for the aggregated groups
+        plt.xticks(np.arange(1, len(all_group_labels) + 1), all_group_labels, rotation=45, fontsize=10)
+        plt.xlabel("Operation Index (groups of 5)")
+        plt.ylabel("Time (ms)")
+        plt.title(f"Comparison of Two Data Sets - Box Plot by Aggregated ID Groups for Operation: {operation}")
+        
+        # Create a custom legend using proxy patches
+        blue_patch = mpatches.Patch(color=colors[0], label=labels[0])
+        red_patch = mpatches.Patch(color=colors[1], label=labels[1])
+        plt.legend(handles=[blue_patch, red_patch], loc="upper left")
+        
+        plt.tight_layout()
+        plt.show()
 
 base_files = list_files_in_folder("./base1/")
 base_dfs = []
@@ -113,4 +126,3 @@ for file in bench_files:
         print("No data to process.")
 
 plot_boxplot((base_dfs, bench_dfs), 10, ("Baseline", "Benchmark"))
-
