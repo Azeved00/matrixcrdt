@@ -96,11 +96,11 @@ app.get('/query', (_req, res) => {
         const jsonString = data.toString("utf-8");
         const array = JSON.parse(jsonString);
 
-        const changes = array.map(ser_change => msgpack.decode(ser_change));    
-        for (let change of changes) {
-            doc = Automerge.applyChanges(doc, change);
+        for (let ser_change of array) {
+            let change_array = msgpack.decode(ser_change);
+            [doc] = Automerge.applyChanges(doc, change_array);
         }
-        console.log("Queried Changes(" + changes.length + ") applied successfully");
+        console.log("Queried Changes(" + array.length + ") applied successfully");
     });
     clock += 1n;
     socket.write(message.serialize());

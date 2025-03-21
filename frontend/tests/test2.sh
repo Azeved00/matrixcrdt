@@ -17,5 +17,5 @@ for i in $(seq 1 2); do
     done
 
     echo "querying"
-    curl --location 'localhost:3000/query'  -o /dev/null  -s
+    curl --location 'localhost:3001/query'  -o /dev/null  -s
 done
