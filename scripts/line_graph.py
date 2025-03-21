@@ -28,21 +28,21 @@ def load_csv(file_path):
     
     return df
 
-def plot_average(sets_of_dataframes, labels=("Dataset 1", "Dataset 2")):
+def plot_regression(sets_of_dataframes, labels=("Dataset 1", "Dataset 2")):
     """
-    Plots the average 'time' for two datasets, grouped by unique IDs.
+    Plots a scatter plot of 'time' vs 'id' for two datasets with regression lines.
     
     Parameters:
     - sets_of_dataframes: A tuple of two lists, each containing DataFrames.
-    - labels: Tuple containing labels for the two data sets.
+    - labels: Tuple containing labels for the two datasets.
     """
-    colors = ['blue', 'red']  # Colors for the two sets
+    colors = ['lightblue', 'lightcoral']
 
     plt.figure(figsize=(15, 6))
 
-    for idx, (dataframes, color, label) in enumerate(zip(sets_of_dataframes, colors, labels)):
+    for dataframes, color, label in zip(sets_of_dataframes, colors, labels):
         combined_df = pd.concat(dataframes, ignore_index=True)
-
+        
         # Ensure required columns exist
         if 'id' not in combined_df.columns or 'time' not in combined_df.columns:
             print("Error: DataFrames must contain 'id' and 'time' columns.")
@@ -51,21 +51,30 @@ def plot_average(sets_of_dataframes, labels=("Dataset 1", "Dataset 2")):
         # Compute the mean 'time' per unique ID
         avg_time_per_id = combined_df.groupby('id')['time'].mean().reset_index()
 
-        # Sort by ID for proper plotting
+        # Sort by ID
         avg_time_per_id = avg_time_per_id.sort_values(by="id")
 
-        # Plot
-        plt.plot(avg_time_per_id['id'], avg_time_per_id['time'], marker='o', color=color, linestyle='-', label=label)
+        # Scatter plot
+        plt.scatter(avg_time_per_id['id'], avg_time_per_id['time'], color=color, alpha=0.6, label=f"{label} Data Points")
+
+        # Fit a linear regression model
+        coefficients = np.polyfit(avg_time_per_id['id'], avg_time_per_id['time'], deg=1)
+        poly_eq = np.poly1d(coefficients)
+
+        # Generate regression line
+        x_values = np.linspace(avg_time_per_id['id'].min(), avg_time_per_id['id'].max(), 100)
+        y_values = poly_eq(x_values)
+
+        # Plot regression line
+        plt.plot(x_values, y_values, color=color, linestyle='-', linewidth=2, label=f"{label} Regression Line")
 
     plt.xlabel("Operation Index")
     plt.ylabel("Time (ms)")
-    #plt.title("Comparison of Two Data Sets - Average Time per ID")
     plt.legend(loc="upper left")
     
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.tight_layout()
     plt.show()
-
 
 # Load and process the baseline dataset
 base_files = list_files_in_folder("./base1/")
@@ -76,4 +85,4 @@ bench_files = list_files_in_folder("./bench1/")
 bench_dfs = [load_csv(file) for file in bench_files if load_csv(file) is not None]
 
 # Plot the averaged results
-plot_average((base_dfs, bench_dfs), labels=("Baseline", "Benchmark"))
+plot_regression((base_dfs, bench_dfs), labels=("Baseline", "Benchmark"))
