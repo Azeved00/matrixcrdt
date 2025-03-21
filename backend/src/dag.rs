@@ -61,7 +61,11 @@ impl<O> MerkleDag<O>
 
     /// Add a node to the network
     ///
-    /// return the hash of the newly added hash
+    /// returns ok if the node is added correctly, in this case a cursor is returned as well 
+    ///
+    /// if the user provides a query cursor, it will be updated to include the new node,
+    /// i.e. remove the new node's parents and add it to the cursor
+    ///
     /// This method has temporal complexity: O(p. log n) where
     ///     p is number of parents of the node
     ///     n is the number of nodes of the graph
@@ -367,9 +371,12 @@ mod tests {
         let mut dag = MerkleDag::<Vec<u8>>::new();
         let key : Vec<u8> = "".to_string().into();
 
+        let mut t = QueryCursor::new();
+
         for i in 0..10 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            dag.add_node(node, None).unwrap();
+            t = dag.add_node(node, Some(t)).unwrap();
+            assert_eq!(t.set.len(), i+1, "the cursor should include the heads of all nodes");
         }
 
         let (changes, cursor) = dag.query(None);
@@ -389,5 +396,57 @@ mod tests {
 
         let (changes, _c) = dag.query(Some(cursor2));
         assert_eq!(changes.len() , 0 , "Querying twice in a row (with cursor) outputs empty changes array");
+    }
+
+    #[test]
+    // when creating branches the heads of the branches should stay in the cursor
+    fn query_cursor_branching() {
+        let mut dag = MerkleDag::<Vec<u8>>::new();
+        let key : Vec<u8> = "".to_string().into();
+
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
+        let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
+        let mut cursor = dag.add_node(node, None).unwrap();
+        assert!(cursor.set.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
+
+        for i in 0..10 as usize {
+            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
+            let hash = node.hash.clone();
+            cursor = dag.add_node(node, Some(cursor)).unwrap();
+
+            for hash in &last_hashes {
+                assert!(cursor.set.get(hash).is_some(), "the new cursor should include the old nodes");
+            }
+            assert!(cursor.set.get(&hash).is_some(), "the new cursor should include the new node");
+
+            last_hashes.push(hash);
+        }
+    }
+
+    #[test]
+    // when adding to existing branches only the head should be there
+    fn query_cursor_single_branch() {
+        let mut dag = MerkleDag::<Vec<u8>>::new();
+        let key : Vec<u8> = "".to_string().into();
+
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
+        let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
+        let mut last_hash: Vec<u8> = node.hash.clone();
+        let mut cursor = dag.add_node(node, None).unwrap();
+        assert!(cursor.set.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
+
+        for i in 0..10 as usize {
+            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![last_hash], 0);
+            let hash = node.hash.clone();
+            cursor = dag.add_node(node, Some(cursor)).unwrap();
+
+            for hash in &last_hashes {
+                assert!(cursor.set.get(hash).is_none(), "the new cursor should NOT include the old nodes");
+            }
+            assert!(cursor.set.get(&hash).is_some(), "the new cursor should include the new node");
+
+            last_hashes.push(hash.clone());
+            last_hash = hash;
+        }
     }
 }

@@ -234,4 +234,17 @@ mod tests {
         assert!(!dag.verify(), "Verification should fail if a node's verification fails");
         */
     }
+
+    #[test]
+    fn cursor_generation(){
+        let password : Vec<u8> = "random password".to_string().into();
+        let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password.clone());
+        let mut cursor = QueryCursor::new();
+        cursor.set.insert(vec![1]);
+
+        let node = dag.gen_node(vec![0], Some(cursor.clone()));
+        assert!(dag.add_node(node, Some(cursor)).is_err(), 
+            "generating a node with a cursor whose hashes are not in the dag should fail");
+    }
+
 }
