@@ -69,7 +69,7 @@ def plot_regression(sets_of_dataframes, labels=("Dataset 1", "Dataset 2")):
         plt.plot(x_values, y_values, color=color, linestyle='-', linewidth=2, label=f"{label} Regression Line")
 
     plt.xlabel("Operation Index")
-    plt.ylabel("Time (ms)")
+    plt.ylabel("Time (\u03BCs)")
     plt.legend(loc="upper left")
     
     plt.grid(True, linestyle="--", alpha=0.7)

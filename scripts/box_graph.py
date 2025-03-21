@@ -90,7 +90,7 @@ def plot_boxplot(sets_of_dataframes, group_size=50, labels=("Dataset 1", "Datase
         # Set x-axis labels for the aggregated groups
         plt.xticks(np.arange(1, len(all_group_labels) + 1), all_group_labels, rotation=45, fontsize=10)
         plt.xlabel("Operation Index (groups of 5)")
-        plt.ylabel("Time (ms)")
+        plt.ylabel("Time (\u03BCs)")
         plt.title(f"Comparison of Two Data Sets - Box Plot by Aggregated ID Groups for Operation: {operation}")
         
         # Create a custom legend using proxy patches
