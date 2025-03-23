@@ -1,8 +1,19 @@
 import os
+import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+
+def get_dataset_sources(version):
+    """Returns dataset folder paths based on the selected version (1, 2, or 3)."""
+    if version not in {1, 2, 3}:
+        raise ValueError("Invalid version! Choose 1, 2, or 3.")
+
+    return [
+        {"folder": f"./base{version}/", "label": "Baseline", "color": "lightblue"},
+        {"folder": f"./bench{version}/", "label": "Benchmark", "color": "lightcoral"},
+    ]
 
 def list_files_in_folder(folder_path):
     """Returns a list of files in the given folder."""
@@ -28,36 +39,45 @@ def load_csv(file_path):
     
     return df
 
-def plot_boxplot(sets_of_dataframes, group_size=50, labels=("Dataset 1", "Dataset 2")):
+def plot_boxplot(datasets, operation_group_sizes=None):
     """
-    Plots two sets of aggregated DataFrames as box plots grouped by operation.
+    Plots multiple sets of aggregated DataFrames as box plots grouped by operation.
     
     Parameters:
-    - sets_of_dataframes: A tuple of two lists, each containing DataFrames.
-    - group_size: Number of unique IDs to aggregate into one group.
-    - labels: Tuple containing labels for the two data sets.
+    - datasets: List of dictionaries, each containing:
+        - 'label': Name of the dataset
+        - 'dataframes': List of Pandas DataFrames
+        - 'color': Color for the boxplots
+    - operation_group_sizes: Dictionary mapping each operation to its specific group size (optional).
+      If not provided, defaults to a group size of 50 for all operations.
     """
-    colors = ['lightblue', 'lightcoral']  # Colors for the two sets
-
-    # Get all unique operations
+    
+    # Use a set to collect all unique operations
     all_operations = set()
-    for dataframes in sets_of_dataframes:
-        for df in dataframes:
-            if 'operation' in df.columns:
-                all_operations.update(df['operation'].unique())
+    for dataset in datasets:
+        for df in dataset["dataframes"]:
+            if isinstance(df, pd.DataFrame) and 'operation' in df.columns:
+                all_operations.update(df["operation"].unique())
 
-    all_operations = sorted(all_operations)
+    all_operations = sorted(all_operations)  # Convert back to a sorted list
+
+    # Default group size if not provided for a specific operation
+    if operation_group_sizes is None:
+        operation_group_sizes = {operation: 50 for operation in all_operations}
 
     for operation in all_operations:
+        group_size = operation_group_sizes.get(operation, 50)  # Use specific group size for the operation
+        
         plt.figure(figsize=(20, 8))
         all_group_labels = []
 
-        for idx, (dataframes, color, label) in enumerate(zip(sets_of_dataframes, colors, labels)):
+        for idx, dataset in enumerate(datasets):
+            label, dataframes, color = dataset["label"], dataset["dataframes"], dataset["color"]
             combined_df = pd.concat(dataframes, ignore_index=True)
 
             # Ensure required columns exist
             if 'id' not in combined_df.columns or 'time' not in combined_df.columns or 'operation' not in combined_df.columns:
-                print("Error: DataFrames must contain 'id', 'time', and 'operation' columns.")
+                print(f"Error: DataFrames in '{label}' must contain 'id', 'time', and 'operation' columns.")
                 return
 
             # Filter by the current operation
@@ -91,38 +111,27 @@ def plot_boxplot(sets_of_dataframes, group_size=50, labels=("Dataset 1", "Datase
         plt.xticks(np.arange(1, len(all_group_labels) + 1), all_group_labels, rotation=45, fontsize=10)
         plt.xlabel("Operation Index (groups of 5)")
         plt.ylabel("Time (\u03BCs)")
-        plt.title(f"Comparison of Two Data Sets - Box Plot by Aggregated ID Groups for Operation: {operation}")
+        plt.title(f"Comparison of Data Sets - Box Plot by Aggregated ID Groups for Operation: {operation}")
         
         # Create a custom legend using proxy patches
-        blue_patch = mpatches.Patch(color=colors[0], label=labels[0])
-        red_patch = mpatches.Patch(color=colors[1], label=labels[1])
-        plt.legend(handles=[blue_patch, red_patch], loc="upper left")
+        legend_patches = [mpatches.Patch(color=dataset["color"], label=dataset["label"]) for dataset in datasets]
+        plt.legend(handles=legend_patches, loc="upper left")
         
         plt.tight_layout()
         plt.show()
 
-base_files = list_files_in_folder("./base1/")
-base_dfs = []
-for file in base_files:
-    df = load_csv(file)
+version = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 
-    if df is not None:
-        print("CSV loaded successfully!")
-        print(df.head())  # Show the first few rows
-        base_dfs.append(df)
-    else:
-        print("No data to process.")
+dataset_sources = get_dataset_sources(version)
 
-bench_files = list_files_in_folder("./bench1/")
-bench_dfs = []
-for file in bench_files:
-    df = load_csv(file)
+datasets = []
+for source in dataset_sources:
+    folder = source["folder"]
+    files = list_files_in_folder(folder)
+    dfs = [df for file in files if (df := load_csv(file)) is not None]
+    datasets.append({"dataframes": dfs, "label": source["label"], "color": source["color"]})
 
-    if df is not None:
-        print("CSV loaded successfully!")
-        print(df.head())  # Show the first few rows
-        bench_dfs.append(df)
-    else:
-        print("No data to process.")
-
-plot_boxplot((base_dfs, bench_dfs), 10, ("Baseline", "Benchmark"))
+plot_boxplot(datasets, operation_group_sizes = {
+    'apply': 20,
+    'query': 5,
+})

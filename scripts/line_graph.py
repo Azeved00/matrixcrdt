@@ -77,11 +77,11 @@ def plot_regression(sets_of_dataframes, labels=("Dataset 1", "Dataset 2")):
     plt.show()
 
 # Load and process the baseline dataset
-base_files = list_files_in_folder("./base1/")
+base_files = list_files_in_folder("./base2/")
 base_dfs = [load_csv(file) for file in base_files if load_csv(file) is not None]
 
 # Load and process the benchmark dataset
-bench_files = list_files_in_folder("./bench1/")
+bench_files = list_files_in_folder("./bench2/")
 bench_dfs = [load_csv(file) for file in bench_files if load_csv(file) is not None]
 
 # Plot the averaged results
