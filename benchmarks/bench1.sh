@@ -1,4 +1,4 @@
-SAMPLE=100
+SAMPLE=1000
 APPLY_N=5
 LOGS="./logs/bench1/"
 
@@ -29,4 +29,5 @@ jobs -p | xargs kill
 
 # put logs in place
 # take every file and put it at /logs folder
+mkdir --parents $LOGS
 mv ./*.csv $LOGS

@@ -1,4 +1,4 @@
-SAMPLE=3
+SAMPLE=1000
 APPLY_N=5
 LOGS="./logs/bench2/"
 
