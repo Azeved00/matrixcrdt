@@ -3,3 +3,4 @@ target
 artifacts/*.drawio.bkp
 **/log*.csv
 **/log*.log
+**/__pycache__
