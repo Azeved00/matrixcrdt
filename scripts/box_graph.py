@@ -7,7 +7,7 @@ import graph_utils
 
 width = 0.3
 
-def plot_boxplot(datasets, group_percentage):
+def plot_boxplot(datasets, group_percentage, v):
     """
     Plots a separate box plot for each operation with at most 20 x-axis ticks.
 
@@ -73,7 +73,8 @@ def plot_boxplot(datasets, group_percentage):
         plt.title(f"Box Plot by Aggregated Groups for Operation: {operation}")
         plt.legend(handles=legend_handles, loc="upper left")
         plt.tight_layout()
-        plt.show()
+        #plt.show()
+        plt.savefig(f"box_bench_{v}.png")
 
 version = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 
@@ -86,4 +87,4 @@ for source in dataset_sources:
     dfs = [df for file in files if (df := graph_utils.load_csv(file)) is not None]
     datasets.append({"dataframes": dfs, "label": source["label"], "color": source["color"]})
 
-plot_boxplot(datasets, 0.05)
+plot_boxplot(datasets, 0.05, version)

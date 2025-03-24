@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import graph_utils
 import sys
 
-def plot_regression(datasets):
+def plot_regression(datasets, v):
     """
     Plots a scatter plot of 'time' vs 'id' for two datasets with regression lines.
     
@@ -61,7 +61,8 @@ def plot_regression(datasets):
         
         plt.grid(True, linestyle="--", alpha=0.7)
         plt.tight_layout()
-        plt.show()
+        #plt.show()
+        plt.savefig(f"line_bench_{v}.png")
 
 
 version = int(sys.argv[1]) if len(sys.argv) > 1 else 2
@@ -75,4 +76,4 @@ for source in dataset_sources:
     dfs = [df for file in files if (df := graph_utils.load_csv(file)) is not None]
     datasets.append({"dataframes": dfs, "label": source["label"], "color": source["color"]})
 
-plot_regression(datasets)
+plot_regression(datasets, version)
