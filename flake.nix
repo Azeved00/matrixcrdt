@@ -85,6 +85,7 @@
                 buildInputs = with pkgs;[
                     nodejs_23
                     rustVersion
+                    libnotify
                 ];
 
                 shellHook = ''
@@ -92,9 +93,37 @@
                         cargo build --color=always 2>&1 | less
                     }
 
-                    alias bench1="for i in {1..9}; do $ROOT/benchmarks/bench1.sh && $ROOT/benchmarks/baseline1.sh; done"
-                    alias bench2="for i in {1..9}; do $ROOT/benchmarks/bench2.sh && $ROOT/benchmarks/baseline2.sh; done"
-                    alias bench3="for i in {1..9}; do $ROOT/benchmarks/bench3.sh && $ROOT/benchmarks/baseline3.sh; done"
+                    bench1() {
+                        rm -rf $ROOT/logs/bench1/*
+                        rm -rf $ROOT/logs/base1/*
+                        for i in {1..9}; do 
+                            $ROOT/benchmarks/bench1.sh 
+                            $ROOT/benchmarks/baseline1.sh 
+                        done
+
+                        notify-send -u critical \
+                            "Benchmark 1 Finished!"
+                    }
+                    bench2() {
+                        rm -rf $ROOT/logs/bench2/*
+                        rm -rf $ROOT/logs/base2/*
+                        for i in {1..9}; do 
+                            $ROOT/benchmarks/bench2.sh 
+                            $ROOT/benchmarks/baseline2.sh 
+                        done
+                        notify-send -u critical \
+                            "Benchmark 2 Finished!"
+                    }
+                    bench3() {
+                        rm -rf $ROOT/logs/bench3/*
+                        rm -rf $ROOT/logs/base3/*
+                        for i in {1..9}; do 
+                            $ROOT/benchmarks/bench3.sh 
+                            $ROOT/benchmarks/baseline3.sh 
+                        done
+                        notify-send -u critical \
+                            "Benchmark 3 Finished!"
+                    }
                 '';
             };
         };
