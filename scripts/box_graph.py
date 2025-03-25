@@ -74,7 +74,7 @@ def plot_boxplot(datasets, group_percentage, v):
         plt.legend(handles=legend_handles, loc="upper left")
         plt.tight_layout()
         #plt.show()
-        plt.savefig(f"box_bench_{v}.png")
+        plt.savefig(f"box_bench_{v}_{operation}.png")
 
 version = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 

@@ -62,7 +62,7 @@ def plot_regression(datasets, v):
         plt.grid(True, linestyle="--", alpha=0.7)
         plt.tight_layout()
         #plt.show()
-        plt.savefig(f"line_bench_{v}.png")
+        plt.savefig(f"line_bench_{v}_{operation}.png")
 
 
 version = int(sys.argv[1]) if len(sys.argv) > 1 else 2
