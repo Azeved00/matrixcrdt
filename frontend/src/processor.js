@@ -1,3 +1,6 @@
+
+const isDev = process.env.NODE_ENV === 'dev';
+
 export default class MessageProcessor {
     constructor() {
         this.counterQueue = [];
@@ -15,7 +18,9 @@ export default class MessageProcessor {
         }
 
         if (this.counterQueue[0].clock === message.clock) {
-            console.log("Processing message:", message.clock);
+            if(isDev){
+                console.log("Processing message:", message.clock);
+            }
             this.counterQueue[0].callback(message.data);
 
             this.counterQueue.shift();
@@ -25,7 +30,9 @@ export default class MessageProcessor {
                 this.processMessage(nextMessage, this.counterQueue[0].clock);
             }
         } else {
-            console.log("Storing message for later:", message.clock);
+            if(isDev){
+                console.log("Storing message for later:", message.clock);
+            }
             this.messageBuffer.set(message.clock, message);
         }
     }
