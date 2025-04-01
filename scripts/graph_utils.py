@@ -7,8 +7,8 @@ def get_dataset_sources(version):
         raise ValueError("Invalid version! Choose 1, 2, or 3.")
 
     return [
-        {"folder": f"./base{version}/", "label": "Baseline", "color": "lightblue"},
-        {"folder": f"./bench{version}/", "label": "Benchmark", "color": "lightcoral"},
+            {"folder": f"./base{version}/", "label": "Baseline", "color": "lightblue", "secondary":"deepskyblue"},
+            {"folder": f"./bench{version}/", "label": "Benchmark", "color": "lightcoral", "secondary":"firebrick"},
     ]
 
 def list_files_in_folder(folder_path):

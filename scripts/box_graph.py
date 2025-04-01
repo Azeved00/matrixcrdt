@@ -4,10 +4,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import graph_utils
+import textwrap
 
 width = 0.3
 
-def plot_boxplot(datasets, group_percentage, v):
+def plot_boxplot(datasets, group_percentage, v, n):
     """
     Plots a separate box plot for each operation with at most 20 x-axis ticks.
 
@@ -67,12 +68,33 @@ def plot_boxplot(datasets, group_percentage, v):
                         flierprops=dict(marker='o', markerfacecolor=color, markersize=6, linestyle='none'))
 
 
-        plt.xticks(base_positions + (width / 2), [f"{i * group_size}-{(i + 1) * group_size}" for i in range(len(grouped_df))])
+        if operation == "query":
+            if group_size == 1:
+                plt.xticks(base_positions + (width / 2), 
+                           [f"{i*n}" for i in range(len(grouped_df))])
+            else:
+                labels = [f"{i * n* group_size}-{(i + 1) *n  * group_size}" for i in range(len(grouped_df))]
+                wrapped_labels = [textwrap.fill(label, 5) for label in labels]
+                plt.xticks(base_positions + (width / 2), 
+                           wrapped_labels,
+                           rotation=0)
+        else:   
+            if group_size == 1:
+                plt.xticks(base_positions + (width / 2), 
+                           [f"{i}" for i in range(len(grouped_df))])
+            else:
+                labels = [f"{i * group_size}-{(i + 1) * group_size}" for i in range(len(grouped_df))]
+                wrapped_labels = [textwrap.fill(label, 5) for label in labels]
+                plt.xticks(base_positions + (width / 2), 
+                           wrapped_labels,
+                           rotation=0)
+
         plt.xlabel("Operation Index (Grouped IDs)")
         plt.ylabel("Time (μs)")
         plt.title(f"Box Plot by Aggregated Groups for Operation: {operation}")
         plt.legend(handles=legend_handles, loc="upper left")
-        plt.tight_layout()
+        plt.tight_layout(pad=3)
+
         #plt.show()
         plt.savefig(f"box_bench_{v}_{operation}.png")
 
@@ -85,6 +107,7 @@ for source in dataset_sources:
     folder = source["folder"]
     files = graph_utils.list_files_in_folder(folder)
     dfs = [df for file in files if (df := graph_utils.load_csv(file)) is not None]
-    datasets.append({"dataframes": dfs, "label": source["label"], "color": source["color"]})
+    source["dataframes"] = dfs
+    datasets.append(source)
 
-plot_boxplot(datasets, 0.05, version)
+plot_boxplot(datasets, 0.05, version, 5)

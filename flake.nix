@@ -59,7 +59,6 @@
                     (python3.withPackages (pp: with pp;[
                         pandas
                         matplotlib
-                        pyqtwebengine
                     ]))
                 ];
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import graph_utils
 import sys
 
-def plot_regression(datasets, v):
+def plot_regression(datasets, v, n):
     """
     Plots a scatter plot of 'time' vs 'id' for two datasets with regression lines.
     
@@ -25,7 +25,7 @@ def plot_regression(datasets, v):
         plt.figure(figsize=(15, 6))
 
         for idx, dataset in enumerate(datasets):
-            label, dataframes, color = dataset["label"], dataset["dataframes"], dataset["color"]
+            label, dataframes, color, secondary = dataset["label"], dataset["dataframes"], dataset["color"], dataset["secondary"]
             combined_df = pd.concat(dataframes, ignore_index=True)
             combined_df = combined_df[combined_df['operation'] == operation].copy()
             
@@ -52,7 +52,7 @@ def plot_regression(datasets, v):
             y_values = poly_eq(x_values)
 
             # Plot regression line
-            plt.plot(x_values, y_values, color=color, linestyle='-', linewidth=2, label=f"{label} Regression Line")
+            plt.plot(x_values, y_values, color=secondary, linestyle='-', linewidth=2, label=f"{label} Regression Line")
 
         plt.xlabel("Operation Index")
         plt.ylabel("Time (\u03BCs)")
@@ -60,7 +60,11 @@ def plot_regression(datasets, v):
         plt.legend(loc="upper left")
         
         plt.grid(True, linestyle="--", alpha=0.7)
+        if operation == "query":
+            xticks = plt.xticks()[0][1:-1]  
+            plt.xticks(xticks, labels=[f"{int(tick * n)}" for tick in xticks])
         plt.tight_layout()
+
         #plt.show()
         plt.savefig(f"line_bench_{v}_{operation}.png")
 
@@ -74,6 +78,7 @@ for source in dataset_sources:
     folder = source["folder"]
     files = graph_utils.list_files_in_folder(folder)
     dfs = [df for file in files if (df := graph_utils.load_csv(file)) is not None]
-    datasets.append({"dataframes": dfs, "label": source["label"], "color": source["color"]})
+    source["dataframes"] = dfs
+    datasets.append(source)
 
-plot_regression(datasets, version)
+plot_regression(datasets, version, 5)
