@@ -1,6 +1,7 @@
 target
 **/node_modules
 artifacts/*.drawio.bkp
+artifacts/*.drawio.dtmp
 **/log*.csv
 **/log*.log
 **/__pycache__
