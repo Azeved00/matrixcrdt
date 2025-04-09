@@ -11,6 +11,9 @@ name = "auth_crdt"
 criterion = { version = "0.5", features = ["async_tokio"] }
 tokio = { version = "1", features = ["full"] }
 
+[features]
+debug = []
+
 [dependencies]
 anyhow = "1.0.68"
 tokio = { version = "1.39.1", default-features = false, features = ["sync", "rt-multi-thread"] }

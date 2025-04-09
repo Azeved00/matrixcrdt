@@ -32,8 +32,11 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
             break;
         }
 
+        #[cfg(feature = "debug")]
         println!("received new message");
         let mut msg = Message::header_from_bytes(&header).unwrap();
+
+        #[cfg(feature = "debug")]
         println!("{:?}", msg);
 
         ctx.clock = cmp::max(ctx.clock, msg.clock);
