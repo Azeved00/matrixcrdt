@@ -2,10 +2,11 @@ import random
 import string
 import sys
 
-PHARMACIES=100
-DOCTROS = 100
-OPERATIONS = 10 000
-
+PHARMACIES= 0.065
+DOCTORS = 0.935
+OPERATIONS = 10_000
+PATIENTS = 1_000_000
+MEDICINE = 10_000
 
 OPERATIONS = [
         {
@@ -13,87 +14,158 @@ OPERATIONS = [
           "name": 'get_pharmacy_prescriptions', 
           "prob": 0.27,
           "params": ['pharmacy'],
+          "who":'pharmacy',
         },
         {
           "index": 1,
           "name": 'get_prescription_medication', 
           "prob": 0.27,
           "params": ['prescription'],
+          "who": 'both',
         },
         {
           "index": 2,
           "name": 'get_staff_prescription', 
           "prob": 0.14,
           "params": ['doctor'],
+          "who": 'doctor',
         },
         {
           "index": 3,
           "name": 'create_prescription', 
           "prob": 0.08,
           "params": ['patient', 'doctor', 'pharmacy'],
+          "who": 'doctor',
         },
         {
           "index": 4,
           "name": 'get_processed_pharmacy_prescription', 
           "prob": 0.07,
-          "params": ['pharmacy']
+          "params": ['pharmacy'],
+          "who": 'pharmacy',
         },
         {
           "index": 5,
           "name": 'process_prescription', 
           "prob": 0.04,
-          "params": ['prescription']
+          "params": ['prescription'],
+          "who": 'pharmacy',
         },
         {
           "index": 6,
           "name": 'update_prescription_medication', 
           "prob": 0.04,
-          "params": ['prescription', 'medication']
+          "params": ['prescription', 'medication'],
+          "who": 'doctor',
         }]
 
 
-def __main__:
-    doctors = []*DOCTORS
-    pharmacies = []*PHARMACIES
+def select_pharmacy(n_pharmacies):
+    return random.randint(0, n_pharmacies)
+
+def select_doctor(n_doctors):
+    return random.randint(0, n_doctors)
+
+def select_both(n_pharmacies, n_doctors):
+    if random.choice([True, False]):
+        num = random.randint(1, n_doctors)
+        return ("D", num)
+    else:
+        num = random.randint(1, n_pharmacies)
+        return ("P", num)
+
+def select_medicine():
+    return random.randint(1, MEDICINE)
+
+def select_patient():
+    return random.randint(1, PATIENTS)
+
+def select_prescription(prescriptions):
+    return random.choice(list(prescriptions))
+
+
+def gen_workload(n_doctors, n_pharmacies, operations):
+    doctors = []*n_doctors
+    pharmacies = []*n_pharmacies
     prescriptions = set()
     prescription_id = 0
     
+    print(f"{n_doctors} {n_pharmacies}")
+
     #bootstrap operations
     #just so that getting editing or closing prescriptions has targets
+    i=0
+    while i<operations:
+        op = random.choices([op["index"] for op in OPERATIONS], weights=[op["prob"] for op in OPERATIONS], k=1)[0]
 
-    for i in range(0,OPERATIONS):
-        let op = random.choices([op["index"] for op in OPERATIONS], weights=[op["prob"] for op in OPERATIONS], k=1)
+        match OPERATIONS[op]["name"]:
+            case "get_pharmacy_prescriptions":
+                p= select_pharmacy(n_pharmacies)
+                print(f"P {p} {OPERATIONS[op]["name"]} {p}")                      
 
-        for param in OPERATIONS[op]["params"]:
-            match param:
-                case "doctor":
-                    let doctor = random.randint(0, len(doctors))
-                case "pharmacy":
-                    #chose on eof the pharmacies
-                    let pharmacy =  random.randint(0, len(doctors))
-                case "patient":
-                    # random number
-                    let patient = random.randint(1, 1000)
-                case "prescription":
-                    #chose one of the prescriptions
-                    let new_prescription = random.choices(prescriptions, k=1)
-                case "medication":
-                    let medication = random.randint(1, 1000)
-                case _ :
-                    print("ERROR")
+            case "get_prescription_medication":
+                if len(prescriptions) <= 0:
+                    continue
 
-        #print into the file
+                (who, idx) = select_both(n_pharmacies, n_doctors)
+                presc = select_prescription(prescriptions)
+                print(f"{who} {idx} {OPERATIONS[op]["name"]} {prec}")
 
-        #change prescription accordingly
-        match op:
-            #create_prescriton creates a new one
-            case 3:
+            case "get_staff_prescription":
+                idx = select_doctor(n_doctors)
+                print(f"D {idx} {OPERATIONS[op]["name"]} {idx}")
+
+
+            case "create_prescription":
+                idx = select_doctor(n_doctors)
+                
+                patient = select_patient()
+                pharmacy = select_pharmacy(n_pharmacies)
+
                 prescriptions.add(prescription_id)
                 prescription_id=prescription_id+1
-            
-            #process prescription removes from the prescription array
-            case 5:
-                precriptions.remove(new_prescription)
-                
 
-        
+                print(f"D {idx} {OPERATIONS[op]["name"]} {patient} {idx} {pharmacy}")
+
+
+            case "get_processed_pharmacy_prescriptions":
+                idx = select_pharmacy(n_pharmacies)
+                print(f"P {idx} {OPERATIONS[op]["name"]} {idx}")                      
+
+            case "process_prescription":
+                if len(prescriptions) <= 0:
+                    continue
+
+                idx = select_pharmacy(n_pharmacies)
+                prescription = select_prescription(prescriptions)
+                precriptions.remove(prescription)
+
+                print(f"P {idx} {OPERATIONS[op]["name"]} {prescripton}")                      
+
+            case "update_prescription_medication":
+                if len(prescriptions) <= 0:
+                    continue
+
+                idx = select_doctor(n_doctors)
+                prescription = select_prescription(prescriptions)
+                medication = select_medication()
+
+                print(f"D {idx} {OPERATIONS[op]["name"]} {prescripton}")                      
+        i+=1
+
+if __name__ == "__main__":
+    random.seed(42)
+
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <clients> <operations>")
+    else:
+        try:
+            clients = int(sys.argv[1])
+            pharmacies =round(clients * PHARMACIES)
+            doctors = clients - pharmacies
+
+            operations = int(sys.argv[2])
+
+            gen_workload(doctors, pharmacies, operations)
+        except ValueError:
+            print("Both arguments must be integers.")
