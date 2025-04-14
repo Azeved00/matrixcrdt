@@ -1,16 +1,21 @@
+#![cfg(feature = "bench")] 
+
 use std::fs::{OpenOptions,File};
 use std::io::Write;
 use std::time::Duration;
 use std::path::Path;
 
+#[cfg(feature = "bench")]
 pub struct LogFile
 {
     log_file: File,
     index: usize,
 }
 
+#[cfg(feature = "bench")]
 impl LogFile {
     pub fn new(path: &Path) -> Self{
+
         let mut log_file = OpenOptions::new()
                 .write(true)  
                 .truncate(true)

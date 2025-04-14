@@ -1,24 +1,26 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
+#[cfg(feature = "bench")]
 use std::path::Path;
+#[cfg(feature = "bench")]
 use std::time::Instant;
 use std::cmp;
 use serde_json;
 use sha3::Sha3_256;
 
 use auth_crdt::{dag::MerkleDag, node::Node, QueryCursor};
+#[cfg(feature = "bench")]
+use auth_crdt::common::logger::LogFile;
+use auth_crdt::common::message::{Message, Command}; 
 
 pub type Dag =  MerkleDag<Vec<u8>>;
 
-pub mod message;
-pub mod logger;
-use crate::message::{Message, Command}; 
-use crate::logger::LogFile; 
 
 struct Context {
     pub clock: u64,
     pub dag: Arc<RwLock<Dag>>,
+    #[cfg(feature = "bench")]
     pub log_file: LogFile,
     pub cursor: QueryCursor,
 }
@@ -60,6 +62,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
     match message.get_command() {
         Command::Update => {
             let mut dag = ctx.dag.write().unwrap();
+#[cfg(feature = "bench")]
             let start = Instant::now();
 
             let layer = dag.get_top_layer();
@@ -76,7 +79,9 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             };
 
 
+#[cfg(feature = "bench")]
             let time = start.elapsed();
+            #[cfg(feature = "bench")]
             ctx.log_file.log(0,"apply".to_string(),time, 0);
 
             Message::new(Command::Acknowledge, ctx.clock)
@@ -84,11 +89,14 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
         Command::Query => {
             let dag = ctx.dag.read().unwrap();
 
+#[cfg(feature = "bench")]
             let start = Instant::now();
             let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
 
+#[cfg(feature = "bench")]
             let time = start.elapsed();
+            #[cfg(feature = "bench")]
             ctx.log_file.log(0,"query".to_string(),time, 0);
 
             let mut ret = Message::new(Command::Acknowledge, ctx.clock);
@@ -127,6 +135,7 @@ async fn main() -> std::io::Result<()>  {
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
+                    #[cfg(feature = "bench")]
                     log_file: LogFile::new(Path::new(&format!("log_{:}_{:}.csv", 
                                 addr, chrono::offset::Utc::now()))),
                     cursor: QueryCursor::default(),

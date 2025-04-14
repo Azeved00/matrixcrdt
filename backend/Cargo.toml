@@ -13,6 +13,7 @@ tokio = { version = "1", features = ["full"] }
 
 [features]
 debug = []
+bench = []
 
 [dependencies]
 anyhow = "1.0.68"

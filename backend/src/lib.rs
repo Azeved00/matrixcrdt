@@ -4,6 +4,11 @@ pub mod node;
 pub mod dag;
 pub mod auth;
 
+pub mod common {
+    pub mod logger;
+    pub mod message;
+}
+
 use std::collections::HashSet;
 
 pub type Hash = Vec<u8>;
