@@ -1,0 +1,8 @@
+1 1
+D 0 create_prescription 732053 0 0
+D 0 create_prescription 732054 0 0
+D 0 get_staff_prescriptions 0
+P 0 get_pharmacy_prescriptions 0
+D 0 get_staff_prescriptions 0
+D 0 create_prescription 732013 0 0
+P 0 get_pharmacy_prescriptions 0
