@@ -8,50 +8,30 @@
 
     outputs = { self, rust-overlay, ... } @ inputs: 
     let
-
-        overlays = [ (import rust-overlay) ];
+        overlays = [  ];
         pkgs = import inputs.nixpkgs { inherit system overlays; };
         ROOT = let p = builtins.getEnv "PWD"; in if p == "" then self else p;
         system = "x86_64-linux";
-
-        rustVersion = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
-          extensions = [ "rust-src" "rust-analyzer" ];
-        });
-
     in {
         devShells."${system}" = {
-            rust-dev = pkgs.mkShell {
+            dev = pkgs.mkShell {
                 inherit ROOT;
-                name = "Rust Dev";
+                name = "Dev";
 
                 buildInputs = with pkgs; [
-                    #cargo rustc 
-                    rustVersion 
-                    openssl
-                    pkg-config
-                    killall
-                    sqlite
+                    rust-analyzer
+                    typescript-language-server
+                    (python3.withPackages (pp: with pp;[
+                        python-lsp-server
+                    ]))
                 ];
 
                 shellHook = ''
-                    build() {
-                        cargo build --color=always 2>&1 | less
-                    }
+            
                 '';
             };
-            js-dev = pkgs.mkShell {
-                inherit ROOT;
-                name = "JS Dev";
 
-                buildInputs = with pkgs; [
-                    nodejs_23
-                    nodePackages.npm
-                    typescript-language-server
-                ];
-
-                shellHook = '''';
-            };
-            python = pkgs.mkShell {
+            graph = pkgs.mkShell {
                 inherit ROOT;
                 name = "graphing";
 
@@ -59,18 +39,19 @@
                     (python3.withPackages (pp: with pp;[
                         pandas
                         matplotlib
+                        requests
                     ]))
                 ];
 
                 shellHook = ''
                     plot-box() {
                         pushd $ROOT/logs
-                        python3 $ROOT/scripts/box_graph.py $1
+                        python3 $ROOT/scripts/graphing/box_graph.py $1
                         popd
                     }
                     plot-line() {
                         pushd $ROOT/logs
-                        python3 $ROOT/scripts/line_graph.py $1
+                        python3 $ROOT/scripts/graphing/line_graph.py $1
                         popd
                     }
                 '';
@@ -79,10 +60,12 @@
 
             run = pkgs.mkShell {
                 inherit ROOT;
-                name = "running";
+                name = "Run";
 
                 buildInputs = with pkgs;[
+                    cargo rustc 
                     nodejs_23
+                    nodePackages.npm
                     rustVersion
                     libnotify
                 ];
