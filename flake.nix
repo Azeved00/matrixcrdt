@@ -82,8 +82,8 @@
                         rm -rf $ROOT/logs/bench1/*
                         rm -rf $ROOT/logs/base1/*
                         for i in {1..9}; do 
-                            $ROOT/benchmarks/bench1.sh 
-                            $ROOT/benchmarks/baseline1.sh 
+                            $ROOT/scripts/benchmarks/bench1.sh 
+                            $ROOT/scripts/benchmarks/baseline1.sh 
                         done
 
                         notify-send -u critical \
@@ -93,8 +93,8 @@
                         rm -rf $ROOT/logs/bench2/*
                         rm -rf $ROOT/logs/base2/*
                         for i in {1..9}; do 
-                            $ROOT/benchmarks/bench2.sh 
-                            $ROOT/benchmarks/baseline2.sh 
+                            $ROOT/scripts/benchmarks/bench2.sh 
+                            $ROOT/scripts/benchmarks/baseline2.sh 
                         done
                         notify-send -u critical \
                             "Benchmark 2 Finished!"
@@ -103,8 +103,8 @@
                         rm -rf $ROOT/logs/bench3/*
                         rm -rf $ROOT/logs/base3/*
                         for i in {1..9}; do 
-                            $ROOT/benchmarks/bench3.sh 
-                            $ROOT/benchmarks/baseline3.sh 
+                            $ROOT/scripts/benchmarks/bench3.sh 
+                            $ROOT/scripts/benchmarks/baseline3.sh 
                         done
                         notify-send -u critical \
                             "Benchmark 3 Finished!"
