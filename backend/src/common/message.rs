@@ -2,13 +2,29 @@ use std::vec::Vec;
 use std::fmt;
 
 pub enum Command {
-    Update,
-    Query,
+    Acknowledge=0,
+    Error = 1,
 
-    Acknowledge,
-    Error,
-    Unknown,
+    Update =2,
+    StatefulQuery =3 ,
+    StatelessQuery = 4,
+
+    Unknown = 255,
 }
+impl Command{
+    pub fn from_u8(x: u8) -> Self{
+        match x {
+            0 => Command::Acknowledge,
+            1 => Command::Error,
+            2 => Command::Update,
+            3 => Command::StatefulQuery,
+            4 => Command::StatelessQuery,
+            _ => Command::Unknown
+        }
+    }
+}
+
+
 pub struct Message {
     pub command: u8,
     pub clock:   u64,
@@ -18,13 +34,7 @@ pub struct Message {
 
 impl Message {
     pub fn new(cmd: Command, clock:u64) -> Self{
-        let command = match cmd {
-            Command::Update => 0,
-            Command::Query => 1,
-            Command::Acknowledge => 2,
-            Command::Error => 3,
-            Command::Unknown => 4,
-        };
+        let command =  cmd as u8;
         Self{
             command,
             length: 0,
@@ -37,7 +47,7 @@ impl Message {
         let message = msg.into_bytes();
         let length = message.len() as u64;
         Self{
-            command: 3,
+            command: Command::Error as u8,
             length,
             clock,
             message,
@@ -82,12 +92,7 @@ impl Message {
     }
 
     pub fn get_command(&self) -> Command {
-        match  self.command {
-            0 => Command::Update,
-            1 => Command::Query,
-            2 => Command::Query,
-            _ => Command::Unknown,
-        }
+        Command::from_u8(self.command)
     }
 }
 

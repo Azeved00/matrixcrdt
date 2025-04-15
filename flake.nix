@@ -19,6 +19,7 @@
                 name = "Dev";
 
                 buildInputs = with pkgs; [
+                    cargo rustc
                     rust-analyzer
                     typescript-language-server
                     (python3.withPackages (pp: with pp;[
@@ -66,8 +67,10 @@
                     cargo rustc 
                     nodejs_23
                     nodePackages.npm
-                    rustVersion
                     libnotify
+                    openssl
+                    pkg-config
+                    sqlite
                 ];
 
                 shellHook = ''

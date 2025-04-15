@@ -1,5 +1,7 @@
 import net      from "net";
+
 const isDev = process.env.NODE_ENV === 'dev';
+const stateless = process.env.STATE_ENV === 'stateless';
 
 const socket = new net.Socket();
 let isConnected = false;
@@ -44,7 +46,8 @@ function sendAndWait(message) {
 }
 
 export async function query(change_fn) {
-    let message = new Message(1, clock, "");
+    let  code =  stateless ? 4 : 3;
+    let message = new Message(code, clock, "");
 
     clock += 1n;
     const data = await sendAndWait(message.serialize())

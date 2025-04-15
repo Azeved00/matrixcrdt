@@ -23,10 +23,11 @@ are coded in **big endian** format.
 
 | Operation id |  Operation  |
 | ------------ | ----------- |
-| 0            | Update      |
-| 1            | Query       | 
-| 2            | Acknowledge |
-| 3            | Error       |
+| 0            | Acknowledge |
+| 1            | Error       |
+| 2            | Update      |
+| 3            | Statefull Query       | 
+| 4            | Stateless Query       | 
 
 Any code other than the ones in the table will be treated as `Unknown`
 All operations are initiated by the frontend to which the answer will come synchronosly
@@ -40,8 +41,13 @@ an `Error` otherwise.
 
 ### Query Operation
 
-The `Query` operation is, also, emmited by the frontend but it doesnt require a message. 
-Instead, in the case the query is successful, the `Acknowledge` will contain an Array of binary messages representing the changes that were querried.
+There are 2 different `Query` operations both are emmited by the frontend and do not expect any data.
+
+The difference between them is that a `Stateless Query`, queries every node of the DAG, while  
+a `Statefull Query` queries only new nodes.
+
+
+When a query is successful, its `Acknowledge` will contain an Array of binary messages representing the changes that were querried.
 This array will be in the form:
 
 | 8 bytes | 8 bytes | $n_0$ bytes | ...| 8 bytes | $n_i$ bytes|

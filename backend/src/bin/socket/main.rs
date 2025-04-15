@@ -76,7 +76,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
             Message::new(Command::Acknowledge, ctx.clock)
         }
-        Command::Query => {
+        Command::StatefulQuery => {
             let dag = ctx.dag.read().unwrap();
 
 #[cfg(feature = "bench")]
@@ -87,7 +87,26 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 #[cfg(feature = "bench")]
             let time = start.elapsed();
 #[cfg(feature = "bench")]
-            ctx.log_file.log(0,"query".to_string(),time, 0);
+            ctx.log_file.log(0,"stateful_query".to_string(),time, 0);
+
+            let mut ret = Message::new(Command::Acknowledge, ctx.clock);
+            let json_str = serde_json::to_string(&change_array)
+                .expect("Failed to serialize the array to JSON");
+            ret.set_message(json_str.as_bytes().to_vec());
+            ret 
+        }
+        Command::StatelessQuery => {
+            let dag = ctx.dag.read().unwrap();
+
+#[cfg(feature = "bench")]
+            let start = Instant::now();
+            let (change_array, cursor) = dag.query(None);
+            ctx.cursor = cursor;
+
+#[cfg(feature = "bench")]
+            let time = start.elapsed();
+#[cfg(feature = "bench")]
+            ctx.log_file.log(0,"stateless_query".to_string(),time, 0);
 
             let mut ret = Message::new(Command::Acknowledge, ctx.clock);
             let json_str = serde_json::to_string(&change_array)

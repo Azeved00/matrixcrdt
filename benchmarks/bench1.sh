@@ -9,7 +9,7 @@ while ! netstat -an | grep LISTEN | grep -q 20076; do
 done
 
 # start  frontend
-npm --prefix ./frontend start &
+npm --prefix ./frontend micro &
 while ! netstat -an | grep LISTEN | grep -q 3000; do
     sleep 0.1
 done

@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "NODE_ENV=prod node app.js",
-    "dev": "NODE_ENV=dev nodemon app.js",
-    "macro": "NODE_ENV=dev nodemon macro.js"
+    "dev": "NODE_ENV=dev nodemon macro.js",
+
+    "micro": "node app.js",
+    "micro_stateless": "STATE_ENV=stateless node app.js",
+
+    "macro": "node macro.js",
+    "macro_stateless": "STATE_ENV=stateless node macro.js"
   },
   "author": "",
   "license": "ISC",
