@@ -56,14 +56,30 @@ function prescription(id, patient, staff, pharmacy){
         staff : staff,
         pharmacy : pharmacy,
 
-        medication : {},
+        medication : "",
         processed : false
     }
 }
 
+//-------------------------------------------------------
+// PATIENTS
+//-------------------------------------------------------
+//get patient
+app.get('/patients/:id', async (_req, res) => {
+    try{
+        res.status(200).json(ret);
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
 
+});
+
+//-------------------------------------------------------
+// PHARMACY
+//-------------------------------------------------------
 // get_pharmacy_prescriptions
-app.get('/get_pharmacy_prescriptions/:pharmacy', async (req, res) => {
+app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
     try{
         const pharmacy = req.params.pharmacy;
 
@@ -81,27 +97,28 @@ app.get('/get_pharmacy_prescriptions/:pharmacy', async (req, res) => {
     }
 });
 
-// get prescription_medicine
-app.get('/get_prescription_medication/:prescription', async (req, res) => {
+// get processsed prescription 
+app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
     try {
-        const prescription = req.params.prescription;
-
+        const pharmacy = req.params.pharmacy;
         await query();
-        const val = DCRDT.documentValue(dcrdt);
-        const ret =val.prescriptionMap[prescription].medication;
-        if(isDev) {
-            console.log(ret);
-        }
 
-        res.status(200).json(ret);
+        const val = DCRDT.documentValue(dcrdt)
+        const list = Object.keys(val.processedMap[pharmacy])
+
+        res.status(200).json(list);
     } catch (err) {
-        console.log(err)
         res.status(500).send({ error: err.toString() });
     }
+
+    //get processed prescription from ProcessedPrescriptions array
 });
 
+//-------------------------------------------------------
+// DOCTOR
+//-------------------------------------------------------
 // get_staff prescription 
-app.get('/get_staff_prescription/:doctor', async (req, res) => {
+app.get('/staff/:doctor/prescriptions', async (req, res) => {
     try{
         const doctor = req.params.doctor;
 
@@ -119,11 +136,33 @@ app.get('/get_staff_prescription/:doctor', async (req, res) => {
     }
 });
 
-// create prescription
-app.post('/create_prescription', async  (req, res) => {
+//-------------------------------------------------------
+// PRESCRIPTIONS
+//-------------------------------------------------------
+//get prescription
+app.get('/prescription/:prescription', async (req, res) =>{
     try {
-        const { patient, doctor, pharmacy} = req.body;
-        let presc = prescription(counter, patient, doctor, pharmacy)
+        const prescription = req.params.prescription;
+
+        await query();
+        const val = DCRDT.documentValue(dcrdt);
+        const ret =val.prescriptionMap[prescription];
+        if(isDev) {
+            console.log(ret);
+        }
+
+        res.status(200).json(ret);
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
+});
+
+// create prescription
+app.post('/prescription', async  (req, res) => {
+    try {
+        const { patient, doctor, pharmacy, id} = req.body;
+        let presc = prescription(id, patient, doctor, pharmacy)
         //console.log(presc)
         
         const val = DCRDT.documentValue(dcrdt)
@@ -153,25 +192,8 @@ app.post('/create_prescription', async  (req, res) => {
     }
 });
 
-// get processsed prescription 
-app.get('/get_processed_pharmacy_prescriptions/:pharmacy', async (req, res) => {
-    try {
-        const pharmacy = req.params.pharmacy;
-        await query();
-
-        const val = DCRDT.documentValue(dcrdt)
-        const list = Object.keys(val.processedMap[pharmacy])
-
-        res.status(200).json(list);
-    } catch (err) {
-        res.status(500).send({ error: err.toString() });
-    }
-
-    //get processed prescription from ProcessedPrescriptions array
-});
-
 // process prescription
-app.post('/process_prescrition', async (req, res) => {
+app.post('/prescription/:prescription/process', async (req, res) => {
     try{
         const params = req.body;
 
@@ -194,8 +216,28 @@ app.post('/process_prescrition', async (req, res) => {
     }
 });
 
-// TODO update prescription medicine
-app.post('/update_prescription_medicine', async (req, res) => {
+// get prescription_medicine
+app.get('/prescription/:prescription/medicine', async (req, res) => {
+    try {
+        const prescription = req.params.prescription;
+
+        await query();
+        const val = DCRDT.documentValue(dcrdt);
+        const ret =val.prescriptionMap[prescription].medication;
+        if(isDev) {
+            console.log(ret);
+        }
+
+        res.status(200).json(ret);
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
+});
+
+
+// update prescription medicine
+app.post('/prescription/:prescription/medicine', async (req, res) => {
     try {
         const params = req.body;
 
