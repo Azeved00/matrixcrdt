@@ -1,29 +1,141 @@
-///  This is an example showcasing how to build a very simple bot with custom
-/// events  using the matrix-sdk. To try it, you need a rust build setup, then
-/// you can run: `cargo run <user> <password>`
-///
-/// Use a second client to open a DM to your bot or invite them into some room.
-/// You should see it automatically join. Then post `!ping`  and observe the log
-/// of the bot. You will see that it sends the `Ping` event and upon receiving
-/// it responds with the `Ack` event send to the room. You won't see that in
-/// most regular clients, unless you activate showing of unknown events.
+use std::net::{TcpListener, TcpStream};
+use std::io::{Read, Write};
+use std::sync::{Arc, RwLock};
+#[cfg(feature = "bench")]
+use std::time::Instant;
+use std::cmp;
+use serde_json;
+
+
 pub mod crdt;
 pub mod dag;
 
 use dag::AuthDag;
-use crdt::CRDT;
 
-use std::{
-    io,
-    io::Write,
-    env,
-    process::exit,
-};
+use auth_crdt::{QueryCursor};
+#[cfg(feature = "bench")]
+use auth_crdt::common::logger::LogFile;
+use auth_crdt::common::message::{Message, Command}; 
 
+
+struct Context {
+    pub clock: u64,
+    pub dag: Arc<RwLock<AuthDag>>,
+#[cfg(feature = "bench")]
+    pub log_file: LogFile,
+    pub cursor: QueryCursor,
+}
+
+fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
+    let mut header = [0; 17];
+
+    loop {
+        if stream.read_exact(&mut header).is_err() {
+            println!("Failed to read message header.");
+            break;
+        }
+
+        #[cfg(feature = "debug")]
+        println!("received new message");
+        let mut msg = Message::header_from_bytes(&header).unwrap();
+        #[cfg(feature = "debug")]
+        println!("{:?}", msg);
+
+        ctx.clock = cmp::max(ctx.clock, msg.clock);
+
+        let mut buffer = vec![0;  msg.length as usize];
+        if stream.read_exact(&mut buffer).is_err() {
+            println!("Failed to read message.");
+            break;
+        }
+        msg.message = buffer;
+
+        let answer = process_message(&mut ctx, msg);
+        let ser_answer = answer.to_bytes();
+
+        stream.write_all(&ser_answer).unwrap();
+        ctx.clock += 1;
+    }
+}
+
+fn process_message(ctx: &mut Context, message: Message) -> Message {
+    match message.get_command() {
+        Command::Update => {
+            let mut dag = ctx.dag.write().unwrap();
+#[cfg(feature = "bench")]
+            let start = Instant::now();
+
+            let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
+            let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            match res {
+                Ok(cursor) => {ctx.cursor = cursor;},
+                Err(_err) => {
+                    return Message::new(Command::Error, ctx.clock);
+                }
+            };
+
+
+#[cfg(feature = "bench")]
+            let time = start.elapsed();
+#[cfg(feature = "bench")]
+            ctx.log_file.log(0,"apply".to_string(),time, 0);
+
+            Message::new(Command::Acknowledge, ctx.clock)
+        }
+        Command::StatefulQuery => {
+            let dag = ctx.dag.read().unwrap();
+
+#[cfg(feature = "bench")]
+            let start = Instant::now();
+            let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
+            ctx.cursor = cursor;
+
+#[cfg(feature = "bench")]
+            let time = start.elapsed();
+#[cfg(feature = "bench")]
+            ctx.log_file.log(0,"stateful_query".to_string(),time, 0);
+
+            let mut ret = Message::new(Command::Acknowledge, ctx.clock);
+            let json_str = serde_json::to_string(&change_array)
+                .expect("Failed to serialize the array to JSON");
+            ret.set_message(json_str.as_bytes().to_vec());
+            ret 
+        }
+        Command::StatelessQuery => {
+            let dag = ctx.dag.read().unwrap();
+
+#[cfg(feature = "bench")]
+            let start = Instant::now();
+            let (change_array, cursor) = dag.query(None);
+            ctx.cursor = cursor;
+
+#[cfg(feature = "bench")]
+            let time = start.elapsed();
+#[cfg(feature = "bench")]
+            ctx.log_file.log(0,"stateless_query".to_string(),time, 0);
+
+            let mut ret = Message::new(Command::Acknowledge, ctx.clock);
+            let json_str = serde_json::to_string(&change_array)
+                .expect("Failed to serialize the array to JSON");
+            ret.set_message(json_str.as_bytes().to_vec());
+            ret 
+        }
+        Command::Acknowledge => {
+            Message::error(ctx.clock, "Request is syntactically correct but Acknowledges cannot be processed.".to_string())
+        }
+        Command::Unknown => {
+            Message::error(ctx.clock, "Request is syntactically correct but Unknowns cannot be processed.".to_string())
+        }
+        Command::Error => {
+            Message::error(ctx.clock, "Request is syntactically correct but Errors cannot be processed.".to_string())
+        }
+    }
+}
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    //tracing_subscriber::fmt::init();
+async fn main() -> std::io::Result<()>  {
+    let listener = TcpListener::bind("127.0.0.1:20076")?;
+    println!("WebSocket Server running on ws://127.0.0.1:20076");
 
     // parse the command line for homeserver, username and password
     let (username, password) =
@@ -38,70 +150,28 @@ async fn main() -> anyhow::Result<()> {
                 exit(1)
             }
         };
-    
-    let mut store = CRDT::new(&username, &password).await;
 
+    let mut store = AuthDag::new(username, password).await;
     loop {
-        println!("Choose an option:");
-        println!("1. Update");
-        println!("2. Save");
-        println!("3. Query");
-        println!("4. Pretty Print Automerge Doc");
-        println!("5. Pretty Print Dag");
-        println!("Enter your choice (or type 'q' to quit):");
-
-        let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read input");
-
-        let input = input.trim();
-        if input.eq_ignore_ascii_case("q") {
-            println!("Exiting. Goodbye!");
-            break;
+        match listener.accept(){
+            Err(e) => {
+                println!("couldn't get client: {e:?}");
+                return Err(e);
+            },
+            Ok((socket, addr)) => {
+                println!("new client: {addr:?}");
+                let ctx = Context {
+                    clock: 0,
+                    dag: Arc::clone(&dag_ref),
+#[cfg(feature = "bench")]
+                    log_file: LogFile::new(std::path::Path::new(&format!("log_{:}_{:}.csv", 
+                                addr, chrono::offset::Utc::now()))),
+                    cursor: QueryCursor::default(),
+                };
+                tokio::spawn(async move {
+                    handle_connection(socket, ctx);
+                });
+            },
         }
-
-        match input.parse::<u32>() {
-            Ok(1) => {
-                print!("Enter key: ");
-                io::stdout().flush().unwrap();
-                let mut key = String::new();
-                io::stdin().read_line(&mut key).unwrap();
-                let key = key.trim();
-
-                print!("Enter value: ");
-                io::stdout().flush().unwrap();
-                let mut value = String::new();
-                io::stdin().read_line(&mut value).unwrap();
-                let value = value.trim();
-
-                store.update(key, value);
-
-                println!("Added or updated key '{}'.", key);
-            }
-            Ok(2) => {
-                store.save().await;
-            }
-            Ok(3) => {
-                store.query();
-            }
-            Ok(4) => {
-                let s = store.pretty_print_doc();
-                println!("{}",s);
-            }
-            Ok(5) => {
-                let s = store.pretty_print_dag();
-                println!("{}",s);
-            }
-            Ok(_) => {
-                println!("Invalid option. Please enter 1, 2, 3 or 4.");
-            }
-            Err(_) => {
-                println!("Invalid input. Please enter a number.");
-            }
-        }
-
-
     }
-    Ok(())
 }
