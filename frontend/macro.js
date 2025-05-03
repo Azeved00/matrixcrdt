@@ -31,7 +31,7 @@ async function query() {
     await SOCKET.query((buffer) => {
         let change = DCRDT_ENCODER.decode(buffer)
         if(isDev){
-            console.log(change)
+            //console.log(change)
         }
         DCRDT.applyChanges(dcrdt, change)
     });
@@ -42,7 +42,7 @@ async function save(){
     const ser_delta = DCRDT_ENCODER.encode(delta);
 
     if(isDev) {
-        console.log(ser_delta)
+        //console.log(ser_delta)
     }
 
     await SOCKET.save(ser_delta)
@@ -67,7 +67,7 @@ function prescription(id, patient, staff, pharmacy){
 //get patient
 app.get('/patients/:id', async (_req, res) => {
     try{
-        res.status(200).json(ret);
+        res.status(200).json({});
     } catch (err) {
         console.log(err)
         res.status(500).send({ error: err.toString() });
@@ -85,7 +85,7 @@ app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
 
         await query()
         const val = DCRDT.documentValue(dcrdt);
-        const ret = Object.keys(val.pharmacyMap[pharmacy]);
+        const ret = Object.keys(val.pharmacyMap[pharmacy] ?? []);
         if(isDev) {
             console.log(ret);
         }
@@ -104,7 +104,7 @@ app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
         await query();
 
         const val = DCRDT.documentValue(dcrdt)
-        const list = Object.keys(val.processedMap[pharmacy])
+        const list = Object.keys(val.processedMap[pharmacy] ?? [])
 
         res.status(200).json(list);
     } catch (err) {
@@ -122,9 +122,9 @@ app.get('/staff/:doctor/prescriptions', async (req, res) => {
     try{
         const doctor = req.params.doctor;
 
-        await query()
+        await query();
         const val = DCRDT.documentValue(dcrdt);
-        const ret = Object.keys(val.staffMap[doctor]);
+        const ret = Object.keys(val.staffMap[doctor] ?? []);
         if(isDev) {
             console.log(ret);
         }
@@ -147,6 +147,7 @@ app.get('/prescription/:prescription', async (req, res) =>{
         await query();
         const val = DCRDT.documentValue(dcrdt);
         const ret =val.prescriptionMap[prescription];
+        //TODO if prescription does not exist then make ERROR
         if(isDev) {
             console.log(ret);
         }
@@ -166,7 +167,9 @@ app.post('/prescription', async  (req, res) => {
         //console.log(presc)
         
         const val = DCRDT.documentValue(dcrdt)
-        console.log(val)
+        if(isDev){
+            console.log(val)
+        }   
         if(!(presc.staff in val.staffMap)){
             dcrdt = DCRDT.change(dcrdt, "", (doc) => {
                 doc.staffMap[presc.staff] = {} 

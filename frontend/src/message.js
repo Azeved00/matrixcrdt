@@ -6,6 +6,24 @@ export default class Message {
         this.length = BigInt(message.length);
     }
 
+    get_command() {
+        switch (this.code) {
+            case 0:
+                return "Acknowledge";
+            case 1:
+                return "Error";
+                
+            case 2:
+                return "Update";
+            case 3:
+                return "StatefulQuery";
+            case 4:
+                return "StatelessQuery";
+            default:
+                return "Unknown";
+        }
+    }
+
 
     // Convert the object into a Buffer
     serialize() {

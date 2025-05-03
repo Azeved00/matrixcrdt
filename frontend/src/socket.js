@@ -30,7 +30,7 @@ function sendAndWait(message) {
             socket.off('error', onError);
             if (isDev) console.log("Message received");
             const msg =  Message.deserialize(data);
-            resolve(msg.data);
+            resolve(msg);
         };
 
         const onError = (err) => {
@@ -50,12 +50,17 @@ export async function query(change_fn) {
     let message = new Message(code, clock, "");
 
     clock += 1n;
-    const data = await sendAndWait(message.serialize())
-    const array = JSON.parse(data);
-    
-    if(isDev){
-        console.log("Received Response")
+    const msg = await sendAndWait(message.serialize())
+
+    const cmd = msg.get_command();
+    if (cmd === "Error") {
+        throw new Error("Received error from backend");
+    } else if (cmd !== "Acknowledge") {
+        throw new Error("Received something strange from backend");
     }
+
+    const array = JSON.parse(msg.data);
+    
     for (const ser_change of array) {
         let buffer =  Buffer.from(ser_change) 
         change_fn(buffer)
@@ -69,8 +74,16 @@ export async function query(change_fn) {
 export async function save(data) {
     let message = new Message(0, clock, data);
     clock += 1n;
-    const _return = await sendAndWait(message.serialize())
+    const ret = await sendAndWait(message.serialize())
+    const cmd = ret.get_command();
+
+    if (cmd === "Error") {
+        throw new Error("Received error from backend");
+    } else if (cmd !== "Acknowledge") {
+        throw new Error("Received something strange from backend");
+    }
+
     if(isDev){
-        console.log("Saved Successfuly");
+        console.log("Updated Successfuly");
     }
 }
