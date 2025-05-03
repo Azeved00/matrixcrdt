@@ -1,4 +1,5 @@
 use sha3::Sha3_256;
+use std::fmt;
 
 pub mod node;
 pub mod dag;
@@ -31,3 +32,10 @@ impl QueryCursor {
     }
 }
 
+impl fmt::Debug for QueryCursor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("QueryCursor")
+            .field("set", &self.set)
+            .finish()
+    }
+}
