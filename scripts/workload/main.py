@@ -1,13 +1,19 @@
 import sys
 import threading
 from generator import gen_workload
-from initial_state import gen_initial_state
+from initial_state import gen_initial_state, get_initial_state
+import logging
+import time
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] Client %(client)d - %(message)s', datefmt='%H:%M:%S')
+
+def log_step(client_id, msg):
+    logging.info(msg, extra={'client': client_id})
 
 
-def client_thread(id, time):
-    set_initial_state(id)
-    gen_workload(id, time)
-
+def gen_client_workload(id, time_limit):
+    log_step(id, "starting workload")
+    gen_workload(id, time_limit)
+    log_step(id, "done")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -16,14 +22,24 @@ if __name__ == "__main__":
 
     try:
         clients = int(sys.argv[1])
-        time = int(sys.argv[2])
+        time_limit= int(sys.argv[2])
         threads = []
 
+        log_step(0, "Generating initial state")
+        gen_initial_state(0)
+        log_step(0, "finished generating initial state")
+        time.sleep(1)
+
+        for i in range(1, clients):
+            log_step(i, "Querying initial state")
+            get_initial_state(i)
+            log_step(i, "finished querying initial state")
+
         for i in range(0, clients):
-            thread = threading.Thread(target=client_thread,
-                                      args=(i, time))
+            thread = threading.Thread(target=gen_client_workload,
+                                      args=(i, time_limit))
             thread.start()
-            threads.add(thread)
+            threads.append(thread)
 
         for thread in threads:
             thread.join()

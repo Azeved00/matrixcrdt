@@ -1,9 +1,9 @@
 
 # OTHER CONSTANTS
-CLIENT_BASE_PORT=3030
+CLIENT_BASE_PORT=3001
 INITIAL_STATE_SIZE=10
 def calc_server_addr(client_id):
-    return "http://localhost:" + str(client_id)
+    return "http://localhost:" + str(CLIENT_BASE_PORT+client_id)
 
 # FMKE STATS
 PHARMACIES= 300
@@ -52,7 +52,7 @@ OPERATIONS = {
       "prob": 0.07,
       "params": ['pharmacy'],
       "req":"get",
-      "path":"/pharmacy/{doctor}/processed",
+      "path":"/pharmacy/{pharmacy}/processed",
     },
     'process_prescription':{
       "index": 5,

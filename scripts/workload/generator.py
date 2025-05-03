@@ -1,6 +1,8 @@
 import random
 from stats import * 
 from numpy import random as nprandom
+import time as timelib
+import requests
 
 
 def zipf(max_value, a=1.5):
@@ -15,7 +17,7 @@ def select_pharmacy():
 def select_doctor():
     return zipf(DOCTORS, 3)
 
-def select_medication(MEDICINE):
+def select_medication():
     number = nprandom.poisson(lam=2)
     meds = set()
     for _ in range(number):
@@ -35,7 +37,7 @@ def make_request(operation, path, data={}):
             case "post":
                 response = requests.post(path, json=data)
         #print(response.json())
-        return response.elapsed
+    return response.elapsed
 
 
 def gen_workload(id, time):
@@ -46,23 +48,24 @@ def gen_workload(id, time):
     prescription_id = INITIAL_STATE_SIZE
     
     log = open(f"{id}_log.csv", 'w')
-    log.write("id,operation_name,elapsed")
+    log.write("id,operation_name,elapsed\n")
 
     #print(f"{clients}")
-    start_time = time.time()
+    start_time = timelib.time()
 
     i=0
-    while time.time() - start_time < seconds:
+    while timelib.time() - start_time < time:
         op = random.choices(
             population=list(OPERATIONS.keys()),
             weights=[op["prob"] for op in OPERATIONS.values()],
             k=1
         )[0]
 
+        elapsed = -1
         match OPERATIONS[op]["name"]:
             case "get_pharmacy_prescriptions":
                 p= select_pharmacy()
-                path = OPERATIONS[op][path].format(pharmacy=p)
+                path = OPERATIONS[op]["path"].format(pharmacy=p)
 
                 elapsed = make_request(op, server_addr+path)
 
@@ -71,12 +74,12 @@ def gen_workload(id, time):
                     raise Exception("No Prescriptions to get the medication of")
 
                 presc = select_prescription(prescriptions)
-                path = OPERATIONS[op][path].format(prescription=presc)
+                path = OPERATIONS[op]["path"].format(prescription=presc)
                 elapsed = make_request(op,  server_addr+path)
 
-            case "get_staff_prescription":
+            case "get_staff_prescriptions":
                 d = select_doctor()
-                path = OPERATIONS[op][path].format(doctor=d)
+                path = OPERATIONS[op]["path"].format(doctor=d)
 
                 elapsed = make_request(op,  server_addr+path)
 
@@ -87,13 +90,13 @@ def gen_workload(id, time):
 
                 prescriptions.add(prescription_id)
                 prescription_id=prescription_id+1
-                path = OPERATIONS[op][path]
+                path = OPERATIONS[op]["path"]
 
                 data = {
                     "patient": patient,
                     "doctor": doc,
                     "pharmacy":pharmacy,
-                    "id": (prescription_id + (id*1_000_000)),
+                    "id": (prescription_id + (id*1_000)),
                 }
 
                 elapsed = make_request(op, server_addr+ path, data=data)
@@ -101,7 +104,7 @@ def gen_workload(id, time):
 
             case "get_processed_pharmacy_prescriptions":
                 p = select_pharmacy()
-                path = OPERATIONS[op][path].format(pharmacy=p)
+                path = OPERATIONS[op]["path"].format(pharmacy=p)
                 elapsed = make_request(op, server_addr+ path)
 
             case "process_prescription":
@@ -109,8 +112,9 @@ def gen_workload(id, time):
                     raise Exception("No Prescriptions to process")
 
                 presc = select_prescription(prescriptions)
-                path = OPERATIONS[op][path].format(prescription=presc)
-                precriptions.remove(prescription)
+                path = OPERATIONS[op]["path"].format(prescription=presc)
+                prescriptions.remove(presc)
+                elapsed = make_request(op, server_addr+ path, data={})
 
 
             case "update_prescription_medication":
@@ -121,22 +125,22 @@ def gen_workload(id, time):
                 data = { "medication": medication}
 
                 presc = select_prescription(prescriptions)
-                path = OPERATIONS[op][path].format(prescription=presc)
+                path = OPERATIONS[op]["path"].format(prescription=presc)
 
                 elapsed = make_request(op, server_addr+ path, data=data)
 
             case "get_patient":
                 p = select_patient()
-                path = OPERATIONS[op][path].format(patient=p)
+                path = OPERATIONS[op]["path"].format(patient=p)
                 elapsed = make_request(op, server_addr+ path)
 
             case "get_prescription":
                 presc = select_prescription(prescriptions)
-                path = OPERATIONS[op][path].format(prescription=presc)
+                path = OPERATIONS[op]["path"].format(prescription=presc)
                 elapsed = make_request(op, server_addr+ path)
 
 
         #print(i, " " ,log)
-        log.write(f"{i}, {OPERATIONS[op]["name"]}, {elapsed}")
+        log.write(f"{i}, {OPERATIONS[op]["name"]}, {elapsed.total_seconds() * 1_000_000}\n")
         i+=1
 
