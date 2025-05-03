@@ -40,7 +40,6 @@
                     (python3.withPackages (pp: with pp;[
                         pandas
                         matplotlib
-                        requests
                     ]))
                 ];
 
@@ -65,12 +64,18 @@
 
                 buildInputs = with pkgs;[
                     cargo rustc 
+
                     nodejs_23
                     nodePackages.npm
                     libnotify
                     openssl
                     pkg-config
                     sqlite
+
+                    (python3.withPackages (pp: with pp;[
+                        numpy
+                        requests
+                    ]))
                 ];
 
                 shellHook = ''
@@ -78,36 +83,70 @@
                         cargo build --color=always 2>&1 | less
                     }
 
-                    bench1() {
-                        rm -rf $ROOT/logs/bench1/*
-                        rm -rf $ROOT/logs/base1/*
+                    micro-bench-1() {
+                        rm -rf $ROOT/logs/micro/bench1/*
+                        rm -rf $ROOT/logs/micro/base1/*
                         for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/bench1.sh 
-                            $ROOT/scripts/benchmarks/baseline1.sh 
+                            $ROOT/scripts/benchmarks/micro1-bench.sh 
+                            $ROOT/scripts/benchmarks/micro1-baseline.sh 
                         done
 
                         notify-send -u critical \
-                            "Benchmark 1 Finished!"
+                            "Micro Benchmark 1 Finished!"
                     }
-                    bench2() {
-                        rm -rf $ROOT/logs/bench2/*
-                        rm -rf $ROOT/logs/base2/*
+                    micro-bench-2() {
+                        rm -rf $ROOT/logs/micro/bench2/*
+                        rm -rf $ROOT/logs/micro/base2/*
                         for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/bench2.sh 
-                            $ROOT/scripts/benchmarks/baseline2.sh 
+                            $ROOT/scripts/benchmarks/micro2-bench.sh 
+                            $ROOT/scripts/benchmarks/micro2-baseline.sh 
                         done
                         notify-send -u critical \
-                            "Benchmark 2 Finished!"
+                            "Micro Benchmark 2 Finished!"
                     }
-                    bench3() {
-                        rm -rf $ROOT/logs/bench3/*
-                        rm -rf $ROOT/logs/base3/*
+                    micro-bench-3() {
+                        rm -rf $ROOT/logs/micro/bench3/*
+                        rm -rf $ROOT/logs/micro/base3/*
                         for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/bench3.sh 
-                            $ROOT/scripts/benchmarks/baseline3.sh 
+                            $ROOT/scripts/benchmarks/micro3-bench.sh 
+                            $ROOT/scripts/benchmarks/micro3-baseline.sh 
                         done
                         notify-send -u critical \
-                            "Benchmark 3 Finished!"
+                            "Micro Benchmark 3 Finished!"
+                    }
+
+                    macro-bench1(){
+                        rm -rf $ROOT/logs/macro/bench1/*
+                        rm -rf $ROOT/logs/macro/base1/*
+                        for i in {1..9}; do 
+                            $ROOT/scripts/benchmarks/macro/authdag.sh 
+                            $ROOT/scripts/benchmarks/macro/matrix.sh 
+                        done
+
+                        notify-send -u critical \
+                            "Macro Benchmark 1 Finished!"
+                    }
+                    macro-bench2(){
+                        rm -rf $ROOT/logs/macro/bench2/*
+                        rm -rf $ROOT/logs/macro/base2/*
+                        for i in {1..9}; do 
+                            $ROOT/scripts/benchmarks/macro/stateless.sh 
+                            $ROOT/scripts/benchmarks/macro/authdag.sh 
+                        done
+
+                        notify-send -u critical \
+                            "Macro Benchmark 2 Finished!"
+                    }
+                    macro-bench3(){
+                        rm -rf $ROOT/logs/macro/bench3/*
+                        rm -rf $ROOT/logs/macro/base3/*
+                        for i in {1..9}; do 
+                            $ROOT/scripts/benchmarks/macro/authless.sh 
+                            $ROOT/scripts/benchmarks/macro/authdag.sh 
+                        done
+
+                        notify-send -u critical \
+                            "Macro Benchmark 3 Finished!"
                     }
                 '';
             };
