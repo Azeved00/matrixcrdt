@@ -1,6 +1,6 @@
 export default class Message {
-    constructor(code, clock, message) {
-        this.code = code;
+    constructor(cmd, clock, message) {
+        this.code = Message.get_code(cmd);
         this.clock = BigInt(clock);
         this.data = message;    
         this.length = BigInt(message.length);
@@ -12,7 +12,6 @@ export default class Message {
                 return "Acknowledge";
             case 1:
                 return "Error";
-                
             case 2:
                 return "Update";
             case 3:
@@ -21,6 +20,23 @@ export default class Message {
                 return "StatelessQuery";
             default:
                 return "Unknown";
+        }
+    }
+
+    static get_code(command) {
+        switch (command) {
+            case "Acknowledge":
+                return 0;
+            case "Error":
+                return 1;
+            case "Update":
+                return 2;
+            case "StatefulQuery":
+                return 3;
+            case "StatelessQuery":
+                return 4;
+            default:
+                return 255;
         }
     }
 
