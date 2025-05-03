@@ -1,22 +1,16 @@
 SAMPLE=1000
 APPLY_N=5
-LOGS="./logs/bench3/"
+LOGS="./logs/micro/base1/"
 
 # start  backend
-cargo run --manifest-path ./backend/Cargo.toml --bin socket &
+cargo run --manifest-path ./backend/Cargo.toml --bin baseline &
 while ! netstat -an | grep LISTEN | grep -q 20076; do
     sleep 0.1
 done
 
-# start  frontend 1
-npm --prefix ./frontend micro 3000 &
+# start  frontend
+npm --prefix ./frontend micro &
 while ! netstat -an | grep LISTEN | grep -q 3000; do
-    sleep 0.1
-done
-
-# start  frontend 2
-npm --prefix ./frontend micro_stateless 3001 &
-while ! netstat -an | grep LISTEN | grep -q 3001; do
     sleep 0.1
 done
 
@@ -25,14 +19,11 @@ done
 for i in $(seq 1 $SAMPLE); do
     for i in $(seq 1 $APPLY_N); do
         curl --location 'localhost:3000/map' \
-            -o /dev/null  -s \
             --header 'Content-Type: application/json' \
             --data "{\"key\":\"123\",\"value\":\"$i\"}"
 
-        curl --location 'localhost:3000/save'  -o /dev/null  -s
+        curl --location 'localhost:3000/save'
     done
-
-    curl --location 'localhost:3001/query'  -o /dev/null  -s
 done
 
 jobs -p | xargs kill

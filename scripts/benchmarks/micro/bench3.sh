@@ -1,6 +1,6 @@
 SAMPLE=1000
 APPLY_N=5
-LOGS="./logs/bench2/"
+LOGS="./logs/micro/bench3/"
 
 # start  backend
 cargo run --manifest-path ./backend/Cargo.toml --bin socket &
@@ -15,12 +15,10 @@ while ! netstat -an | grep LISTEN | grep -q 3000; do
 done
 
 # start  frontend 2
-npm --prefix ./frontend micro 3001 &
+npm --prefix ./frontend micro_stateless 3001 &
 while ! netstat -an | grep LISTEN | grep -q 3001; do
     sleep 0.1
 done
-
-
 
 
 # send curl requests to frontend
@@ -41,4 +39,5 @@ jobs -p | xargs kill
 
 # put logs in place
 # take every file and put it at /logs folder
+mkdir --parents $LOGS
 mv ./*.csv $LOGS

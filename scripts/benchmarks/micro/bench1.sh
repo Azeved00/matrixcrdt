@@ -1,6 +1,6 @@
 SAMPLE=1000
 APPLY_N=5
-LOGS="./logs/bench1/"
+LOGS="./logs/micro/bench1/"
 
 # start  backend
 cargo run --manifest-path ./backend/Cargo.toml --bin socket &
