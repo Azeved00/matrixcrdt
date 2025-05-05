@@ -1,6 +1,10 @@
 export default class Message {
     constructor(cmd, clock, message) {
-        this.code = Message.get_code(cmd);
+        if (typeof cmd === 'string') {
+            this.code = Message.get_code(cmd);
+        } else {
+            this.code = cmd;
+        }
         this.clock = BigInt(clock);
         this.data = message;    
         this.length = BigInt(message.length);

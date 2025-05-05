@@ -30,6 +30,7 @@ function sendAndWait(message) {
             socket.off('error', onError);
             if (isDev) console.log("Message received");
             const msg =  Message.deserialize(data);
+            console.log(msg)
             resolve(msg);
         };
 
@@ -53,8 +54,6 @@ export async function query(change_fn) {
     const msg = await sendAndWait(message.serialize())
 
     const cmd = msg.get_command();
-    console.log(cmd);
-    console.log(msg.code);
     if (cmd === "Error") {
         throw new Error("Received error from backend");
     } else if (cmd !== "Acknowledge") {

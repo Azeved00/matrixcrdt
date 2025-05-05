@@ -29,11 +29,9 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
             break;
         }
 
-        #[cfg(feature = "debug")]
+#[cfg(feature = "debug")]
         println!("received new message");
         let mut msg = Message::header_from_bytes(&header).unwrap();
-        #[cfg(feature = "debug")]
-        println!("{:?}", msg);
 
         ctx.clock = cmp::max(ctx.clock, msg.clock);
 
@@ -43,8 +41,11 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
             break;
         }
         msg.message = buffer;
+#[cfg(feature = "debug")]
+        println!("Received: {:?}", msg);
 
         let answer = process_message(&mut ctx, msg);
+        println!("Answered: {:?}", answer);
         let ser_answer = answer.to_bytes();
 
         stream.write_all(&ser_answer).unwrap();
@@ -61,13 +62,17 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
             let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
             let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            println!("{:?}", dag.len());
             match res {
                 Ok(cursor) => {ctx.cursor = cursor;},
-                Err(_err) => {
+                Err(err) => {
+#[cfg(feature = "debug")]
+                    println!("Error when updating: {}", err);
                     return Message::new(Command::Error, ctx.clock);
                 }
             };
 
+            println!("{:?}", ctx.cursor);
 
 #[cfg(feature = "bench")]
             let time = start.elapsed();
@@ -81,7 +86,12 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
+            println!("{:?}", ctx.cursor);
+            println!("{:?}", dag.len());
+            println!("{:?}", dag.linearize());
             let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
+#[cfg(feature = "debug")]
+            println!("{:?}",change_array);
             ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
@@ -126,15 +136,26 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
     }
 }
 
-#[tokio::main]
-async fn main() -> std::io::Result<()>  {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(32)
+        .enable_all()
+        .build()?;
+
+    runtime.block_on( async {
+        let _ = run_server();
+    });
+    Ok(())
+}
+
+fn run_server() -> std::io::Result<()>{
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
     let dag = AuthDag::new("My super secret Key".to_string().into());
     let dag_ref = Arc::new(RwLock::new(dag));
 
     loop {
-        match listener.accept(){
+        match listener.accept() {
             Err(e) => {
                 println!("couldn't get client: {e:?}");
                 return Err(e);
