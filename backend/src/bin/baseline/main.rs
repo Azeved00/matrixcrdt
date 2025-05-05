@@ -135,9 +135,19 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
         }
     }
 }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(32)
+        .enable_all()
+        .build()?;
 
-#[tokio::main]
-async fn main() -> std::io::Result<()>  {
+    runtime.block_on( async {
+        let _ = run_server();
+    });
+    Ok(())
+}
+
+async fn run_server() -> std::io::Result<()>  {
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
     let dag = MerkleDag::<Vec<u8>>::new();
