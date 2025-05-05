@@ -30,13 +30,17 @@ def select_patient():
 def select_prescription(prescriptions):
     return random.choice(list(prescriptions))
 
-def make_request(operation, path, data={}):
+def make_request(operation, path,counter,  data={}):
+    headers = {}
+    headers['X-Request-ID'] = f"req-{counter}"
+
     match OPERATIONS[operation]["req"]:
             case "get":
-                response = requests.get(path)
+                response = requests.get(path, headers=headers)
             case "post":
-                response = requests.post(path, json=data)
-        #print(response.json())
+                response = requests.post(path, json=data, headers=headers)
+    
+    #print(response.json())
     return response.elapsed
 
 
@@ -53,7 +57,7 @@ def gen_workload(id, time):
     #print(f"{clients}")
     start_time = timelib.time()
 
-    i=0
+    counter=0
     while timelib.time() - start_time < time:
         op = random.choices(
             population=list(OPERATIONS.keys()),
@@ -67,7 +71,7 @@ def gen_workload(id, time):
                 p= select_pharmacy()
                 path = OPERATIONS[op]["path"].format(pharmacy=p)
 
-                elapsed = make_request(op, server_addr+path)
+                elapsed = make_request(op, server_addr+path, counter)
 
             case "get_prescription_medication":
                 if len(prescriptions) <= 0:
@@ -75,13 +79,13 @@ def gen_workload(id, time):
 
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
-                elapsed = make_request(op,  server_addr+path)
+                elapsed = make_request(op,  server_addr+path, counter)
 
             case "get_staff_prescriptions":
                 d = select_doctor()
                 path = OPERATIONS[op]["path"].format(doctor=d)
 
-                elapsed = make_request(op,  server_addr+path)
+                elapsed = make_request(op,  server_addr+path, counter)
 
             case "create_prescription":
                 doc = select_doctor()
@@ -99,13 +103,13 @@ def gen_workload(id, time):
                     "id": (prescription_id + (id*1_000)),
                 }
 
-                elapsed = make_request(op, server_addr+ path, data=data)
+                elapsed = make_request(op, server_addr+ path, counter, data=data)
 
 
             case "get_processed_pharmacy_prescriptions":
                 p = select_pharmacy()
                 path = OPERATIONS[op]["path"].format(pharmacy=p)
-                elapsed = make_request(op, server_addr+ path)
+                elapsed = make_request(op, server_addr+ path, counter)
 
             case "process_prescription":
                 if len(prescriptions) <= 0:
@@ -114,7 +118,7 @@ def gen_workload(id, time):
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
                 prescriptions.remove(presc)
-                elapsed = make_request(op, server_addr+ path, data={})
+                elapsed = make_request(op, server_addr+ path, counter, data={})
 
 
             case "update_prescription_medication":
@@ -127,17 +131,17 @@ def gen_workload(id, time):
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
 
-                elapsed = make_request(op, server_addr+ path, data=data)
+                elapsed = make_request(op, server_addr+ path, counter, data=data)
 
             case "get_patient":
                 p = select_patient()
                 path = OPERATIONS[op]["path"].format(patient=p)
-                elapsed = make_request(op, server_addr+ path)
+                elapsed = make_request(op, server_addr+ path, counter)
 
             case "get_prescription":
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
-                elapsed = make_request(op, server_addr+ path)
+                elapsed = make_request(op, server_addr+ path, counter)
 
 
         #print(i, " " ,log)
