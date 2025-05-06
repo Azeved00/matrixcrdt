@@ -5,7 +5,7 @@ const stateless = process.env.STATE_ENV === 'stateless';
 
 const socket = new net.Socket();
 let isConnected = false;
-let clock = 0n;
+export let clock = 0n;
 
 import Message from "./message.js";
 
