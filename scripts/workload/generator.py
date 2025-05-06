@@ -60,7 +60,7 @@ def gen_workload(id, time):
         prescriptions.add(99_000_000+i)
     prescription_id = INITIAL_STATE_SIZE
     
-    log = open(f"{id}_log.csv", 'w')
+    log = open(f"log_{id}.csv", 'w')
     log.write("id,operation_name,elapsed\n")
 
     #print(f"{clients}")

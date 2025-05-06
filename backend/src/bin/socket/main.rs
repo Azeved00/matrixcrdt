@@ -166,8 +166,7 @@ fn run_server() -> std::io::Result<()>{
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
 #[cfg(feature = "bench")]
-                    log_file: LogFile::new(std::path::Path::new(&format!("log_{:}_{:}.csv", 
-                                addr, chrono::offset::Utc::now()))),
+                    log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", addr))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {
