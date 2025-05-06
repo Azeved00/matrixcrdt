@@ -23,7 +23,7 @@ dcrdt = DCRDT.change(dcrdt, "", (doc) => {
 const app = express();
 app.use(express.json());
 const port = process.argv[2] || 3000;
-const logger = new Logger(`log_${port}.log`);
+const logger = new Logger(`log_${port}.csv`);
 let counter = 0;
 
 //socket set up
@@ -50,6 +50,15 @@ async function save(){
     await SOCKET.save(ser_delta)
 }
 
+function from_set_prescription(set_json){
+    const output = Object.fromEntries(
+      Object.entries(set_json).map(([key, valueSet]) => 
+          [key, valueSet.values().next().value]
+      )
+    );
+
+    return output;
+}
 
 function prescription(id, patient, staff, pharmacy){
     return {
@@ -240,19 +249,20 @@ app.post('/prescription/:prescription/process', async (req, res) => {
         console.log("process prescription")
 
         const val = DCRDT.documentValue(dcrdt)
-        const presc = val.prescriptionMap[prescription]
+        const presc = from_set_prescription(val.prescriptionMap[prescription])
         console.log(presc)
+        console.log(val.processedMap)
 
-        if(!(presc.pharmacy in val.processed)){
+        if(!(presc.pharmacy in val.processedMap)){
             dcrdt = DCRDT.change(dcrdt, "", (doc) => {
                 doc.processedMap[presc.pharmacy] = {} 
             })
         }
         dcrdt = DCRDT.change(dcrdt, "", (doc) => {
-            doc.prescriptionMap[presc.prescription].processed = true;
+            doc.prescriptionMap[prescription].processed = true;
         });
         dcrdt = DCRDT.change(dcrdt, "", (doc) => {
-            doc.processedMap[prescription] = true;
+            doc.processedMap[presc.pharmacy][prescription] = true;
         });
         
         const diff = process.hrtime(start);
@@ -275,9 +285,6 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
         const start = process.hrtime();
 
         const val = DCRDT.documentValue(dcrdt);
-        console.log("PRESCRIPTION MEDICATION")
-        console.log(prescription)
-        console.log(val.prescriptionMap[prescription])
         const ret =val.prescriptionMap[prescription].medication;
 
         if(isDev) {
