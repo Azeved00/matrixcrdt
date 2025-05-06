@@ -154,6 +154,6 @@ def gen_workload(id, time):
 
 
         #print(i, " " ,log)
-        log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed.total_seconds() * 1e6}\n")
+        log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed.microseconds}\n")
         counter+=1
 

@@ -1,13 +1,20 @@
+
 export default class Message {
-    constructor(cmd, clock, message) {
+    static HEADER_SIZE = 17;
+
+    constructor(cmd, clock, data) {
         if (typeof cmd === 'string') {
             this.code = Message.get_code(cmd);
         } else {
             this.code = cmd;
         }
         this.clock = BigInt(clock);
-        this.data = message;    
-        this.length = BigInt(message.length);
+        if (typeof data === 'bigint') {
+            this.length = data
+        } else {
+            this.data = data;    
+            this.length = BigInt(data.length);
+        }
     }
 
     get_command() {
@@ -61,7 +68,7 @@ export default class Message {
     }
 
     // Static method to parse a Buffer into a Message object
-    static deserialize(buffer) {
+    static deserialize_header(buffer) {
         let offset = 0;
 
         const code = buffer.readUInt8(offset);
@@ -73,8 +80,6 @@ export default class Message {
         const messageLength = buffer.readBigUInt64BE(offset);
         offset += 8;
 
-        const data = buffer.slice(offset, offset + Number(messageLength));
-
-        return new Message(code, clock, data);
+        return new Message(code, clock, messageLength);
     }
 }

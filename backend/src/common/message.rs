@@ -66,6 +66,7 @@ impl Message {
         buffer.extend_from_slice(&self.clock.to_be_bytes());
 
         buffer.extend_from_slice(&self.length.to_be_bytes());
+
         buffer.extend_from_slice(&self.message);
 
         buffer

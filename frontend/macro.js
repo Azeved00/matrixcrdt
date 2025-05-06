@@ -29,13 +29,13 @@ let counter = 0;
 SOCKET.init(20076, "127.0.0.1", port)
 
 async function query() {
-    /*await SOCKET.query((buffer) => {
+    await SOCKET.query((buffer) => {
         let change = DCRDT_ENCODER.decode(buffer)
         if(ENV.debug){
             //console.log(change)
         }
         DCRDT.applyChanges(dcrdt, change)
-    });*/
+    });
 }
 
 async function save(){

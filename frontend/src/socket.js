@@ -5,7 +5,41 @@ const socket = new net.Socket();
 let isConnected = false;
 export let clock = 0n;
 
+let currentResolve = null;
+let currentReject = null;
+let buffer = Buffer.alloc(0);
+
 import Message from "./message.js";
+
+// Core buffering logic to handle full messages
+function onData(chunk) {
+    buffer = Buffer.concat([buffer, chunk]);
+    if(ENV.debug){
+        console.log(`got message with ${buffer.length} bytes`)
+        console.log(`got message with ${Message.HEADER_SIZE} bytes`)
+    }
+
+    while (buffer.length >= Message.HEADER_SIZE) {
+        const msg = Message.deserialize_header(buffer);
+        const totalLength = Message.HEADER_SIZE + Number(msg.length);
+
+        if (buffer.length < totalLength) return; 
+
+        msg.data = buffer.slice(Message.HEADER_SIZE, totalLength);
+        buffer = buffer.slice(totalLength);
+
+        if (ENV.debug) {
+            console.log("Message fully received");
+            console.log(msg);
+        }
+
+        if (currentResolve) {
+            currentResolve(msg);
+            currentResolve = null;
+            currentReject = null;
+        }
+    }
+}
 
 export function init(port, addr, localPort) {
     const lp = 2000 + parseInt(localPort, 10);
@@ -27,32 +61,31 @@ export function init(port, addr, localPort) {
             console.log("Connection closed");
         }
     });
+
+    socket.on("data", onData);
+    socket.on("error", (err) => {
+        if (currentReject) {
+            currentReject(err);
+            currentReject = null;
+            currentResolve = null;
+        }
+    });
 }
+
+
 
 // Function to send data and wait for response
 function sendAndWait(message) {
     return new Promise((resolve, reject) => {
         if (!isConnected) return reject("Socket not connected");
 
-        const onData = (data) => {
-            socket.off('error', onError);
-            if (ENV.debug) {
-                console.log("Message received");
-            }
-            const msg =  Message.deserialize(data);
-            if (ENV.debug) {
-                console.log(msg);
-            }
-            resolve(msg);
-        };
+        if (currentResolve !== null) {
+            return reject("Previous request still pending");
+        }
 
-        const onError = (err) => {
-            socket.off('data', onData);
-            reject(err);
-        };
+        currentResolve = resolve;
+        currentReject = reject;
 
-        socket.once('data', onData);
-        socket.once('error', onError);
 
         socket.write(message);
     });

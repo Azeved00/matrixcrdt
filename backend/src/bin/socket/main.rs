@@ -1,4 +1,4 @@
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
 #[cfg(feature = "bench")]
@@ -15,6 +15,8 @@ use auth_crdt::common::message::{Message, Command};
 struct Context {
     pub clock: u64,
     pub dag: Arc<RwLock<AuthDag>>,
+#[cfg(feature = "debug")]
+    pub addr: SocketAddr,
 #[cfg(feature = "bench")]
     pub log_file: LogFile,
     pub cursor: QueryCursor,
@@ -29,8 +31,6 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
             break;
         }
 
-#[cfg(feature = "debug")]
-        println!("received new message");
         let mut msg = Message::header_from_bytes(&header).unwrap();
 
         ctx.clock = cmp::max(ctx.clock, msg.clock);
@@ -42,11 +42,11 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
         }
         msg.message = buffer;
 #[cfg(feature = "debug")]
-        println!("Received: {:?}", msg);
+        println!("{:} Received: {:?}",ctx.addr.port() ,msg);
 
         let answer = process_message(&mut ctx, msg);
 #[cfg(feature = "debug")]
-        println!("Answered: {:?}", answer);
+        println!("{:} Answered: {:?}",ctx.addr.port(), answer);
         let ser_answer = answer.to_bytes();
 
         stream.write_all(&ser_answer).unwrap();
@@ -172,6 +172,8 @@ fn run_server() -> std::io::Result<()>{
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
+#[cfg(feature = "debug")]
+                    addr,
 #[cfg(feature = "bench")]
                     log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", addr.port()))),
                     cursor: QueryCursor::default(),
