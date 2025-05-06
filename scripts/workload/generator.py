@@ -32,7 +32,7 @@ def select_prescription(prescriptions):
 
 def make_request(operation, path,counter,  data={}):
     headers = {}
-    headers['X-Request-ID'] = f"req-{counter}"
+    headers['request-id'] = f"{counter}"
 
     match OPERATIONS[operation]["req"]:
             case "get":
@@ -41,6 +41,15 @@ def make_request(operation, path,counter,  data={}):
                 response = requests.post(path, json=data, headers=headers)
     
     #print(response.json())
+
+    if not response.ok:
+        try:
+            error_message = response.json().get("error", "Unknown error")
+        except ValueError:
+            error_message = response.text or "Unknown error (non-JSON response)"
+
+        raise Exception(f"HTTP {response.status_code}: {error_message}")
+
     return response.elapsed
 
 
@@ -48,7 +57,7 @@ def gen_workload(id, time):
     prescriptions = set()
     server_addr=calc_server_addr(id)
     for i in range(0, INITIAL_STATE_SIZE):
-        prescriptions.add(99_000_00+i)
+        prescriptions.add(99_000_000+i)
     prescription_id = INITIAL_STATE_SIZE
     
     log = open(f"{id}_log.csv", 'w')
@@ -93,7 +102,6 @@ def gen_workload(id, time):
                 pharmacy = select_pharmacy()
 
                 prescriptions.add(prescription_id)
-                prescription_id=prescription_id+1
                 path = OPERATIONS[op]["path"]
 
                 data = {
@@ -104,6 +112,7 @@ def gen_workload(id, time):
                 }
 
                 elapsed = make_request(op, server_addr+ path, counter, data=data)
+                prescription_id=prescription_id+1
 
 
             case "get_processed_pharmacy_prescriptions":
@@ -117,8 +126,8 @@ def gen_workload(id, time):
 
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
-                prescriptions.remove(presc)
                 elapsed = make_request(op, server_addr+ path, counter, data={})
+                prescriptions.remove(presc)
 
 
             case "update_prescription_medication":
@@ -126,7 +135,7 @@ def gen_workload(id, time):
                     raise Exception("No Prescriptions to update")
 
                 medication = select_medication()
-                data = { "medication": medication}
+                data = { "medication": medication }
 
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
@@ -145,6 +154,6 @@ def gen_workload(id, time):
 
 
         #print(i, " " ,log)
-        log.write(f"{i}, {OPERATIONS[op]["name"]}, {elapsed.total_seconds() * 1_000_000}\n")
-        i+=1
+        log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed.total_seconds() * 1_000_000}\n")
+        counter+=1
 
