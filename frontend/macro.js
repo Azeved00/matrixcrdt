@@ -3,8 +3,7 @@ import DCRDT from './lib/delta-crdt/frontend/index.js';
 import DCRDT_ENCODER from './lib/delta-crdt/frontend/encoder.js';
 import * as SOCKET from './src/socket.js'
 import { Logger } from './src/logger.js';
-
-const isDev = process.env.NODE_ENV === 'dev';
+import * as ENV from './src/env.js';
 
 let dcrdt = DCRDT.init({})
 dcrdt = DCRDT.change(dcrdt, "", (doc) => {
@@ -32,7 +31,7 @@ SOCKET.init(20076, "127.0.0.1")
 async function query() {
     /*await SOCKET.query((buffer) => {
         let change = DCRDT_ENCODER.decode(buffer)
-        if(isDev){
+        if(ENV.debug){
             //console.log(change)
         }
         DCRDT.applyChanges(dcrdt, change)
@@ -43,7 +42,7 @@ async function save(){
     const delta = DCRDT.getChanges(dcrdt);
     const ser_delta = DCRDT_ENCODER.encode(delta);
 
-    if(isDev) {
+    if(ENV.debug) {
         //console.log(ser_delta)
     }
 
@@ -81,7 +80,9 @@ app.get('/patient/:patient', async (req, res) => {
         const requestId = req.headers['request-id'] || -1;
         const start = process.hrtime();
 
-        console.log(req.params.patient)
+        if (ENV.debug){
+            console.log(req.params.patient)
+        }
 
         const diff = process.hrtime(start);
         const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
@@ -107,7 +108,7 @@ app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
 
         const val = DCRDT.documentValue(dcrdt);
         const ret = Object.keys(val.pharmacyMap[pharmacy] ?? []);
-        if(isDev) {
+        if(ENV.debug) {
             console.log(ret);
         }
 
@@ -156,7 +157,7 @@ app.get('/staff/:doctor/prescriptions', async (req, res) => {
 
         const val = DCRDT.documentValue(dcrdt);
         const ret = Object.keys(val.staffMap[doctor] ?? []);
-        if(isDev) {
+        if(ENV.debug) {
             console.log(ret);
         }
 
@@ -184,7 +185,7 @@ app.get('/prescription/:prescription', async (req, res) =>{
         const val = DCRDT.documentValue(dcrdt);
         const ret =val.prescriptionMap[prescription];
         //TODO if prescription does not exist then make ERROR
-        if(isDev) {
+        if(ENV.debug) {
             console.log(ret);
         }
 
@@ -206,10 +207,12 @@ app.post('/prescription', async  (req, res) => {
         const start = process.hrtime();
 
         let presc = prescription(id, patient, doctor, pharmacy)
-        //console.log(presc)
+        if(ENV.debug){
+            console.log(presc)
+        }
         
         const val = DCRDT.documentValue(dcrdt)
-        if(isDev){
+        if(ENV.debug){
             console.log(val)
         }   
         if(!(presc.staff in val.staffMap)){
@@ -246,12 +249,17 @@ app.post('/prescription/:prescription/process', async (req, res) => {
         const prescription = req.params.prescription;
         const requestId = req.headers['request-id'] || -1;
         const start = process.hrtime();
-        console.log("process prescription")
+        
+        if(ENV.debug){
+            console.log("process prescription")
+        }
 
         const val = DCRDT.documentValue(dcrdt)
         const presc = from_set_prescription(val.prescriptionMap[prescription])
-        console.log(presc)
-        console.log(val.processedMap)
+        if(ENV.debug){
+            console.log(presc)
+            console.log(val.processedMap)
+        }
 
         if(!(presc.pharmacy in val.processedMap)){
             dcrdt = DCRDT.change(dcrdt, "", (doc) => {
@@ -287,7 +295,7 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
         const val = DCRDT.documentValue(dcrdt);
         const ret =val.prescriptionMap[prescription].medication;
 
-        if(isDev) {
+        if(ENV.debug) {
             console.log(ret);
         }
 
@@ -326,6 +334,8 @@ app.post('/prescription/:prescription/medication', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    if(ENV.debug){
+        console.log(`Server running at http://localhost:${port}`);
+    }
 });
 

@@ -1,7 +1,5 @@
 import net      from "net";
-
-const isDev = process.env.NODE_ENV === 'dev';
-const stateless = process.env.STATE_ENV === 'stateless';
+import * as ENV from './env.js';
 
 const socket = new net.Socket();
 let isConnected = false;
@@ -12,12 +10,16 @@ import Message from "./message.js";
 export function init(port, addr) {
     socket.connect(port, addr, () => {
         isConnected = true;
-        console.log("Connected to Rust server!");
+        if (ENV.debug){
+            console.log("Connected to Rust server!");
+        }
     });
 
     socket.on("close", () => {
         isConnected = false;
-        console.log("Connection closed");
+        if (ENV.debug){
+            console.log("Connection closed");
+        }
     });
 }
 
@@ -28,9 +30,13 @@ function sendAndWait(message) {
 
         const onData = (data) => {
             socket.off('error', onError);
-            if (isDev) console.log("Message received");
+            if (ENV.debug) {
+                console.log("Message received");
+            }
             const msg =  Message.deserialize(data);
-            console.log(msg)
+            if (ENV.debug) {
+                console.log(msg);
+            }
             resolve(msg);
         };
 
@@ -47,7 +53,7 @@ function sendAndWait(message) {
 }
 
 export async function query(change_fn) {
-    let code =  stateless ? "StatefulQuery" : "StatelessQuery";
+    let code =  ENV.state ? "StatefulQuery" : "StatelessQuery";
     let message = new Message(code, clock, "");
 
     clock += 1n;
@@ -67,7 +73,7 @@ export async function query(change_fn) {
         change_fn(buffer)
     }
 
-    if(isDev){
+    if(ENV.debug){
         console.log("Queried Changes("+ array.length+ ") applied succesfuly")
     }
 }
@@ -78,8 +84,10 @@ export async function save(data) {
     const ret = await sendAndWait(message.serialize())
     const cmd = ret.get_command();
 
-    console.log(cmd);
-    console.log(ret.code);
+    if(ENV.debug){
+        console.log(cmd);
+        console.log(ret.code);
+    }
 
     if (cmd === "Error") {
         throw new Error("Received error from backend");
@@ -87,7 +95,7 @@ export async function save(data) {
         throw new Error("Received something strange from backend");
     }
 
-    if(isDev){
+    if(ENV.debug){
         console.log("Updated Successfuly");
     }
 }

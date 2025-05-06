@@ -1,5 +1,4 @@
-
-const isDev = process.env.NODE_ENV === 'dev';
+import * as ENV from './env.js';
 
 export default class MessageProcessor {
     constructor() {
@@ -18,7 +17,7 @@ export default class MessageProcessor {
         }
 
         if (this.counterQueue[0].clock === message.clock) {
-            if(isDev){
+            if(ENV.debug){
                 console.log("Processing message:", message.clock);
             }
             this.counterQueue[0].callback(message.data);
@@ -30,7 +29,7 @@ export default class MessageProcessor {
                 this.processMessage(nextMessage, this.counterQueue[0].clock);
             }
         } else {
-            if(isDev){
+            if(ENV.debug){
                 console.log("Storing message for later:", message.clock);
             }
             this.messageBuffer.set(message.clock, message);

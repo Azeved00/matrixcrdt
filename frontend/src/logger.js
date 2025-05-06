@@ -2,12 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import * as ENV from './env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export class Logger {
     constructor(fileName) {
+        if (!ENV.log) {return;}
+
         this.logFile = path.join(__dirname, fileName);
 
         const entry = 'req_id, clock, op, elapsed\n';
@@ -17,6 +20,8 @@ export class Logger {
     }
 
     log(id, clock, op, elapsed) {
+        if (!ENV.log) {return;}
+
         const entry = `${id}, ${clock}, ${op},${elapsed}\n`;
         fs.appendFile(this.logFile, entry, (err) => {
             if (err) console.error('Failed to write log:', err);
