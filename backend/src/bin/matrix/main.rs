@@ -1,10 +1,15 @@
 use std::net::{TcpListener, TcpStream};
-use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
 #[cfg(feature = "bench")]
 use std::time::Instant;
 use std::cmp;
 use serde_json;
+
+use std::{
+    io::{Read, Write},
+    env,
+    process::exit,
+};
 
 
 pub mod crdt;
@@ -65,15 +70,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 #[cfg(feature = "bench")]
             let start = Instant::now();
 
-            let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
-            let res = dag.add_node(node, Some(ctx.cursor.clone()));
-            match res {
-                Ok(cursor) => {ctx.cursor = cursor;},
-                Err(_err) => {
-                    return Message::new(Command::Error, ctx.clock);
-                }
-            };
-
+            dag.send_update(message.message);
 
 #[cfg(feature = "bench")]
             let time = start.elapsed();
@@ -87,8 +84,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
-            let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
-            ctx.cursor = cursor;
+            let change_array = dag.query();
 
 #[cfg(feature = "bench")]
             let time = start.elapsed();
@@ -106,8 +102,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
-            let (change_array, cursor) = dag.query(None);
-            ctx.cursor = cursor;
+            let change_array = dag.query();
 
 #[cfg(feature = "bench")]
             let time = start.elapsed();
@@ -132,8 +127,19 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
     }
 }
 
-#[tokio::main]
-async fn main() -> std::io::Result<()>  {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(32)
+        .enable_all()
+        .build()?;
+
+    runtime.block_on( async {
+        let _ = run_server();
+    });
+    Ok(())
+}
+
+async fn run_server() -> std::io::Result<()>  {
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
 
@@ -151,7 +157,8 @@ async fn main() -> std::io::Result<()>  {
             }
         };
 
-    let mut store = AuthDag::new(username, password).await;
+    let store = AuthDag::new(&username, &password).await;
+    let store_ref = Arc::new(RwLock::new(store));
     loop {
         match listener.accept(){
             Err(e) => {
@@ -162,7 +169,7 @@ async fn main() -> std::io::Result<()>  {
                 println!("new client: {addr:?}");
                 let ctx = Context {
                     clock: 0,
-                    dag: Arc::clone(&dag_ref),
+                    dag: Arc::clone(&store_ref),
 #[cfg(feature = "bench")]
                     log_file: LogFile::new(std::path::Path::new(&format!("log_{:}_{:}.csv", 
                                 addr, chrono::offset::Utc::now()))),
