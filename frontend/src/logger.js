@@ -11,7 +11,7 @@ export class Logger {
     this.logFile = path.join(__dirname, fileName);
 
     const entry = 'req_id, clock, elapsed\n';
-    fs.appendFile(this.logFile, entry, (err) => {
+    fs.writeFile(this.logFile, entry, (err) => {
       if (err) console.error('Failed to write log:', err);
     });
   }
