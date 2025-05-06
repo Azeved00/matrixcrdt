@@ -45,6 +45,7 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
         println!("Received: {:?}", msg);
 
         let answer = process_message(&mut ctx, msg);
+#[cfg(feature = "debug")]
         println!("Answered: {:?}", answer);
         let ser_answer = answer.to_bytes();
 
@@ -62,6 +63,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
             let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
             let res = dag.add_node(node, Some(ctx.cursor.clone()));
+#[cfg(feature = "debug")]
             println!("{:?}", dag.len());
             match res {
                 Ok(cursor) => {ctx.cursor = cursor;},
@@ -72,6 +74,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
                 }
             };
 
+#[cfg(feature = "debug")]
             println!("{:?}", ctx.cursor);
 
 #[cfg(feature = "bench")]
@@ -86,8 +89,11 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
+#[cfg(feature = "debug")]
             println!("{:?}", ctx.cursor);
+#[cfg(feature = "debug")]
             println!("{:?}", dag.len());
+#[cfg(feature = "debug")]
             println!("{:?}", dag.linearize());
             let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
 #[cfg(feature = "debug")]
@@ -161,6 +167,7 @@ fn run_server() -> std::io::Result<()>{
                 return Err(e);
             },
             Ok((socket, addr)) => {
+#[cfg(feature = "debug")]
                 println!("new client: {addr:?}");
                 let ctx = Context {
                     clock: 0,
