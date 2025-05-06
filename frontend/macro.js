@@ -2,6 +2,7 @@ import express  from 'express';
 import DCRDT from './lib/delta-crdt/frontend/index.js';
 import DCRDT_ENCODER from './lib/delta-crdt/frontend/encoder.js';
 import * as SOCKET from './src/socket.js'
+import { Logger } from './src/logger.js';
 
 const isDev = process.env.NODE_ENV === 'dev';
 
@@ -22,19 +23,20 @@ dcrdt = DCRDT.change(dcrdt, "", (doc) => {
 const app = express();
 app.use(express.json());
 const port = process.argv[2] || 3000;
+const logger = new Logger(`log_${port}.log`);
 let counter = 0;
 
 //socket set up
 SOCKET.init(20076, "127.0.0.1")
 
 async function query() {
-    await SOCKET.query((buffer) => {
+    /*await SOCKET.query((buffer) => {
         let change = DCRDT_ENCODER.decode(buffer)
         if(isDev){
             //console.log(change)
         }
         DCRDT.applyChanges(dcrdt, change)
-    });
+    });*/
 }
 
 async function save(){
@@ -65,8 +67,16 @@ function prescription(id, patient, staff, pharmacy){
 // PATIENTS
 //-------------------------------------------------------
 //get patient
-app.get('/patients/:id', async (_req, res) => {
+app.get('/patient/:patient', async (req, res) => {
     try{
+        const requestId = req.headers['request-id'] || -1;
+        const start = process.hrtime();
+
+        console.log(req.params.patient)
+
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         res.status(200).json({});
     } catch (err) {
         console.log(err)
@@ -82,14 +92,19 @@ app.get('/patients/:id', async (_req, res) => {
 app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
     try{
         const pharmacy = req.params.pharmacy;
-
+        const requestId = req.headers['request-id'] || -1;
         await query()
+        const start = process.hrtime();
+
         const val = DCRDT.documentValue(dcrdt);
         const ret = Object.keys(val.pharmacyMap[pharmacy] ?? []);
         if(isDev) {
             console.log(ret);
         }
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -101,11 +116,16 @@ app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
 app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
     try {
         const pharmacy = req.params.pharmacy;
+        const requestId = req.headers['request-id'] || -1;
         await query();
 
+        const start = process.hrtime();
         const val = DCRDT.documentValue(dcrdt)
         const list = Object.keys(val.processedMap[pharmacy] ?? [])
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         res.status(200).json(list);
     } catch (err) {
         res.status(500).send({ error: err.toString() });
@@ -121,14 +141,19 @@ app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
 app.get('/staff/:doctor/prescriptions', async (req, res) => {
     try{
         const doctor = req.params.doctor;
-
+        const requestId = req.headers['request-id'] || -1;
         await query();
+        const start = process.hrtime();
+
         const val = DCRDT.documentValue(dcrdt);
         const ret = Object.keys(val.staffMap[doctor] ?? []);
         if(isDev) {
             console.log(ret);
         }
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -143,8 +168,10 @@ app.get('/staff/:doctor/prescriptions', async (req, res) => {
 app.get('/prescription/:prescription', async (req, res) =>{
     try {
         const prescription = req.params.prescription;
-
+        const requestId = req.headers['request-id'] || -1;
         await query();
+        const start = process.hrtime();
+
         const val = DCRDT.documentValue(dcrdt);
         const ret =val.prescriptionMap[prescription];
         //TODO if prescription does not exist then make ERROR
@@ -152,6 +179,9 @@ app.get('/prescription/:prescription', async (req, res) =>{
             console.log(ret);
         }
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -163,6 +193,9 @@ app.get('/prescription/:prescription', async (req, res) =>{
 app.post('/prescription', async  (req, res) => {
     try {
         const { patient, doctor, pharmacy, id} = req.body;
+        const requestId = req.headers['request-id'] || -1;
+        const start = process.hrtime();
+
         let presc = prescription(id, patient, doctor, pharmacy)
         //console.log(presc)
         
@@ -187,6 +220,9 @@ app.post('/prescription', async  (req, res) => {
         });
         counter += 1
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         await save();
         res.status(200).json({});
     } catch (err) {
@@ -198,39 +234,59 @@ app.post('/prescription', async  (req, res) => {
 // process prescription
 app.post('/prescription/:prescription/process', async (req, res) => {
     try{
-        const params = req.body;
+        const prescription = req.params.prescription;
+        const requestId = req.headers['request-id'] || -1;
+        const start = process.hrtime();
+        console.log("process prescription")
 
         const val = DCRDT.documentValue(dcrdt)
-        const presc = val.prescriptionMap[params.prescription]
+        const presc = val.prescriptionMap[prescription]
+        console.log(presc)
+
         if(!(presc.pharmacy in val.processed)){
             dcrdt = DCRDT.change(dcrdt, "", (doc) => {
-                doc.processed[presc.pharmacy] = {} 
+                doc.processedMap[presc.pharmacy] = {} 
             })
         }
         dcrdt = DCRDT.change(dcrdt, "", (doc) => {
             doc.prescriptionMap[presc.prescription].processed = true;
-            doc.processedMap[params.prescription] = true;
+        });
+        dcrdt = DCRDT.change(dcrdt, "", (doc) => {
+            doc.processedMap[prescription] = true;
         });
         
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         await save();
         res.status(200).json();
     } catch (err) {
+        console.log(err)
         res.status(500).send({ error: err.toString() });
     }
 });
 
-// get prescription_medicine
-app.get('/prescription/:prescription/medicine', async (req, res) => {
+// get prescription_medication
+app.get('/prescription/:prescription/medication', async (req, res) => {
     try {
         const prescription = req.params.prescription;
-
+        const requestId = req.headers['request-id'] || -1;
         await query();
+        const start = process.hrtime();
+
         const val = DCRDT.documentValue(dcrdt);
+        console.log("PRESCRIPTION MEDICATION")
+        console.log(prescription)
+        console.log(val.prescriptionMap[prescription])
         const ret =val.prescriptionMap[prescription].medication;
+
         if(isDev) {
             console.log(ret);
         }
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -239,15 +295,21 @@ app.get('/prescription/:prescription/medicine', async (req, res) => {
 });
 
 
-// update prescription medicine
-app.post('/prescription/:prescription/medicine', async (req, res) => {
+// update prescription medication
+app.post('/prescription/:prescription/medication', async (req, res) => {
     try {
-        const params = req.body;
+        const prescription = req.params.prescription;
+        const { medication } = req.body;
+        const requestId = req.headers['request-id'] || -1;
+        const start = process.hrtime();
 
         dcrdt = DCRDT.change(dcrdt, "", (doc) => {
-            doc.prescriptionMap[params.id] = params.medicine
+            doc.prescriptionMap[prescription].medication = medication
         });
 
+        const diff = process.hrtime(start);
+        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
+        logger.log(requestId, SOCKET.clock, timeInMs);
         await save();
         res.status(200).json();
     } catch (err) {
