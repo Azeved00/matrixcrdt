@@ -26,7 +26,7 @@ const logger = new Logger(`log_${port}.csv`);
 let counter = 0;
 
 //socket set up
-SOCKET.init(20076, "127.0.0.1")
+SOCKET.init(20076, "127.0.0.1", port)
 
 async function query() {
     /*await SOCKET.query((buffer) => {
@@ -85,8 +85,8 @@ app.get('/patient/:patient', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "get_patient", time);
         res.status(200).json({});
     } catch (err) {
         console.log(err)
@@ -113,8 +113,8 @@ app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "get_pharmacy_prescriptions", time);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -134,8 +134,8 @@ app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
         const list = Object.keys(val.processedMap[pharmacy] ?? [])
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "get_processed_prescription", time);
         res.status(200).json(list);
     } catch (err) {
         res.status(500).send({ error: err.toString() });
@@ -162,8 +162,8 @@ app.get('/staff/:doctor/prescriptions', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "get_staff_prescription", time);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -190,8 +190,8 @@ app.get('/prescription/:prescription', async (req, res) =>{
         }
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "get_prescription", time);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -233,8 +233,8 @@ app.post('/prescription', async  (req, res) => {
         counter += 1
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "create_prescription", time);
         await save();
         res.status(200).json({});
     } catch (err) {
@@ -274,8 +274,8 @@ app.post('/prescription/:prescription/process', async (req, res) => {
         });
         
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "process_prescription", time);
         await save();
         res.status(200).json();
     } catch (err) {
@@ -300,8 +300,8 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock, "get_prescription_medication", time);
         res.status(200).json(ret);
     } catch (err) {
         console.log(err)
@@ -323,8 +323,8 @@ app.post('/prescription/:prescription/medication', async (req, res) => {
         });
 
         const diff = process.hrtime(start);
-        const timeInMs = (diff[0] * 1e3 + diff[1] / 1e6).toFixed(3);
-        logger.log(requestId, SOCKET.clock, timeInMs);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        logger.log(requestId, SOCKET.clock,"update_prescription_medication", time);
         await save();
         res.status(200).json();
     } catch (err) {

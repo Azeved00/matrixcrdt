@@ -7,8 +7,14 @@ export let clock = 0n;
 
 import Message from "./message.js";
 
-export function init(port, addr) {
-    socket.connect(port, addr, () => {
+export function init(port, addr, localPort) {
+    const lp = 2000 + parseInt(localPort, 10);
+    socket.connect({
+        host: addr,
+        port: port,
+        localAddress: '127.0.0.1',
+        localPort: lp
+    }, () => {
         isConnected = true;
         if (ENV.debug){
             console.log("Connected to Rust server!");
