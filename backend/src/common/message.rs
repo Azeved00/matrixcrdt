@@ -100,9 +100,9 @@ impl Message {
 impl fmt::Debug for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg_preview = if self.message.len() > 5 {
-            &self.message[..5] // Show only first 5 bytes
+            &self.message[..5]
         } else {
-            &self.message // Show the whole message if shorter
+            &self.message
         };
 
         write!(

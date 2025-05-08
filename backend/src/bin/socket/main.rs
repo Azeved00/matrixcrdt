@@ -90,14 +90,13 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 #[cfg(feature = "bench")]
             let start = Instant::now();
 #[cfg(feature = "debug")]
+            println!("stateful query");
+#[cfg(feature = "debug")]
             println!("{:?}", ctx.cursor);
 #[cfg(feature = "debug")]
-            println!("{:?}", dag.len());
-#[cfg(feature = "debug")]
-            println!("{:?}", dag.linearize());
+            println!("{:?}", dag.get_dag().get_heads());
+
             let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
-#[cfg(feature = "debug")]
-            println!("{:?}",change_array);
             ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
@@ -113,6 +112,8 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
         }
         Command::StatelessQuery => {
             let dag = ctx.dag.read().unwrap();
+#[cfg(feature = "debug")]
+            println!("stateless query");
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
