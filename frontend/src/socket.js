@@ -15,8 +15,7 @@ import Message from "./message.js";
 function onData(chunk) {
     buffer = Buffer.concat([buffer, chunk]);
     if(ENV.debug){
-        console.log(`got message with ${buffer.length} bytes`)
-        console.log(`got message with ${Message.HEADER_SIZE} bytes`)
+        console.log(`got message, buffer has ${buffer.length} bytes`)
     }
 
     while (buffer.length >= Message.HEADER_SIZE) {

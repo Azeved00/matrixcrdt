@@ -33,8 +33,17 @@ async function query() {
         let change = DCRDT_ENCODER.decode(buffer)
         if(ENV.debug){
             //console.log(change)
+            console.log("dcrdt before applying changes")
+            const val1 = DCRDT.documentValue(dcrdt);
+            console.log(val1)
         }
+
         DCRDT.applyChanges(dcrdt, change)
+        if(ENV.debug){
+            console.log("dcrdt after applying changes")
+            const val2 = DCRDT.documentValue(dcrdt);
+            console.log(val2)
+        }
     });
 }
 
@@ -293,6 +302,9 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
         const start = process.hrtime();
 
         const val = DCRDT.documentValue(dcrdt);
+        console.log("get_prescription_meds")
+        console.log(val)
+        console.log(prescription)
         const ret =val.prescriptionMap[prescription].medication;
 
         if(ENV.debug) {

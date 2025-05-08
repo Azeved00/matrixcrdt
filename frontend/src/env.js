@@ -1,5 +1,16 @@
 export const debug      = process.env.NODE_ENV   === 'dev';
 export const log        = process.env.NODE_ENV   === 'bench';
 
-export const state      = process.env.STATE_ENV === '';
+export const state      = !process.env.STATE_ENV;
 
+export const automerge_baseStateChange = [new Uint8Array([
+  133, 111,  74, 131, 130, 180, 194,  62,   1,  96,   0,  16,
+  232,  19, 110, 252, 104,  55,  72, 116, 178, 239, 160, 106,
+  175,  64,  93, 140,   1,   1, 220, 170, 237, 192,   6,   0,
+    0,   5,  21,  51,  52,   1,  66,   2,  86,   2, 112,   2,
+  124,  15, 112, 114, 101, 115,  99, 114, 105, 112, 116, 105,
+  111, 110,  77,  97, 112,   8, 115, 116,  97, 102, 102,  77,
+   97, 112,  11, 112, 104,  97, 114, 109,  97,  99, 121,  77,
+   97, 112,  12, 112, 114, 111,  99, 101, 115, 115, 101, 100,
+   77,  97, 112,   4,   4,   0,   4,   0,   4,   0
+])];

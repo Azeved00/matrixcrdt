@@ -2,33 +2,18 @@ import net      from "net";
 import express  from 'express';
 import path     from "path";
 import * as Automerge from "@automerge/automerge";
-import MessageProcessor from "./src/processor.js";
 import Message from "./src/message.js";
 import msgpack from "@msgpack/msgpack";
 
 const __dirname = path.resolve(path.dirname(''));
 let doc = Automerge.init(); 
 const socket = new net.Socket();
-const app = express();
 const port = process.argv[2] || 3000;
 let clock = 0n;
-let msgProc = new MessageProcessor();
-let changes = [];
 
-// Set up socket to Auth Dag
-socket.connect(20076, "127.0.0.1", () => {
-    console.log("Connected to Rust server!");
-});
-socket.on("data", (data) => {
-    //console.log("message received");
-    let message = Message.deserialize(data);
-    msgProc.processMessage(message);
-});
-socket.on("close", () => {
-    console.log("Connection closed");
-});
 
 // Set up express server
+const app = express();
 app.use(express.json());
 
 app.get('/', (_req, res) => {

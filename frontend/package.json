@@ -8,7 +8,7 @@
     "micro": "node app.js",
     "micro_stateless": "STATE_ENV=stateless node app.js",
 
-    "macro": "node macro.js",
+    "macro": "node macro_automerge.js",
     "macro_stateless": "STATE_ENV=stateless node macro.js"
   },
   "author": "",
