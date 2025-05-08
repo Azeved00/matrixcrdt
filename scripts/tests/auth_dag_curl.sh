@@ -23,3 +23,5 @@ done
 tmux split-window -t "$SESSION:$WINDOW" -v
 tmux select-layout -t "$SESSION:$WINDOW" tiled
 tmux send-keys -t "$SESSION:$WINDOW" "python3 ./scripts/workload/initial_state.py $CLIENTS" C-m
+
+curl --location 'localhost:3001/pharmacy/1/prescriptions'
