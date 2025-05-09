@@ -64,7 +64,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     pub fn gen_node(&self, data: O, opt_cursor: Option<QueryCursor>) -> Node<O> {
         let parents = match opt_cursor{
             None => self.dag.get_heads(),
-            Some(cursor) => cursor.set.into_iter().collect(),
+            Some(cursor) => cursor.heads.into_iter().collect(),
         };
         let layer = self.dag.get_top_layer();
         let node = Node::new::<D>(&self.key, &data, &parents, layer + 1);
@@ -240,7 +240,7 @@ mod tests {
         let password : Vec<u8> = "random password".to_string().into();
         let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password.clone());
         let mut cursor = QueryCursor::new();
-        cursor.set.insert(vec![1]);
+        cursor.heads.insert(vec![1]);
 
         let node = dag.gen_node(vec![0], Some(cursor.clone()));
         assert!(dag.add_node(node, Some(cursor)).is_err(), 

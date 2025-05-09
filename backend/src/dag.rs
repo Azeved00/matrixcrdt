@@ -2,7 +2,7 @@ use log::{info,error};
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use std::collections::BTreeMap;
-use std::collections::{HashSet, HashMap, BinaryHeap, VecDeque};
+use std::collections::{HashMap, BinaryHeap, VecDeque};
 use std::cmp;
 use std::io;
 use serde::{Serialize, Deserialize};
@@ -74,9 +74,31 @@ impl<O> MerkleDag<O>
         if self.dag.contains_key(&node.hash){
             return match opt_cursor {
                 Some(cursor) => Ok(cursor),
-                None => Ok(QueryCursor {set: HashSet::from([node.hash.clone()]) }),
+                None => {
+                    let mut c = QueryCursor::new();
+                    c.heads.insert(node.hash.clone());
+                    Ok(c)
+                },
             }
         }
+
+
+        let mut cursor = match opt_cursor {
+            None => QueryCursor::new(),
+            Some(c) => c
+        };
+
+        for parent in &node.parents {
+            if self.heads.contains_key(parent) {
+                cursor.heads.remove(parent);
+            }
+            else {
+                cursor.forks.insert(parent.clone());
+            }
+        }
+
+        cursor.heads.insert(node.hash.clone());
+
 
         for parent_hash in &node.parents {
             let parent = self.dag.get(parent_hash);
@@ -95,18 +117,7 @@ impl<O> MerkleDag<O>
         self.dag.insert(node.hash.clone(),node.clone());
         self.heads.insert(node.hash.clone(),node.clone());
 
-        return match opt_cursor {
-            None => Ok(QueryCursor {set: HashSet::from([node.hash.clone()]) }),
-            Some(c) => {
-                let mut cursor = c.clone();
-                for parent in &node.parents {
-                    cursor.set.remove(parent);
-                }
-                cursor.set.insert(node.hash.clone());
-
-                return Ok(cursor);
-            }
-        };
+        return Ok(cursor);
     }
     
     /// Merge MerkleDag `dag` into `self`
@@ -289,9 +300,7 @@ impl<O> MerkleDag<O>
     {
         let cursor = match old_cursor {
             Some(cursor) => cursor,
-            None => {
-                QueryCursor {set: HashSet::new() }
-            }
+            None => QueryCursor::new()
         };
         let mut heap = BinaryHeap::<&Node<O>>::new();
         let mut res = Vec::<O>::new();
@@ -318,7 +327,8 @@ impl<O> MerkleDag<O>
         
 
         let heads : Vec<Vec<u8>> = self.heads.keys().cloned().collect();
-        let cursor = QueryCursor {set: heads.into_iter().collect() };
+        let mut cursor = QueryCursor::new();
+        cursor.heads = heads.into_iter().collect();
         return (res.into_iter().rev().collect(), cursor)
     }
 }
@@ -376,7 +386,7 @@ mod tests {
         for i in 0..10 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
             t = dag.add_node(node, Some(t)).unwrap();
-            assert_eq!(t.set.len(), i+1, "the cursor should include the heads of all nodes");
+            assert_eq!(t.heads.len(), i+1, "the cursor should include the heads of all nodes");
         }
 
         let (changes, cursor) = dag.query(None);
@@ -397,6 +407,40 @@ mod tests {
         let (changes, _c) = dag.query(Some(cursor2));
         assert_eq!(changes.len() , 0 , "Querying twice in a row (with cursor) outputs empty changes array");
     }
+    
+    #[test]
+    // when querying dag with multiple branches only new nodes should be queried 
+    fn query_multiple_branches() {
+        let mut dag = MerkleDag::<Vec<u8>>::new();
+        let key : Vec<u8> = "".to_string().into();
+        let mut cursor = QueryCursor::new();
+
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
+        let mut last_hash: Vec<u8> = node.hash.clone();
+        cursor = dag.add_node(node, Some(cursor)).unwrap();
+
+        for i in 0..5 as usize {
+            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![last_hash], 0);
+            last_hash = node.hash.clone();
+            cursor = dag.add_node(node, Some(cursor)).unwrap();
+        }
+
+        let branch1 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (7_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
+        let _ = dag.add_node(branch1, Some(cursor.clone())).unwrap();
+        println!("dag heads {:?}", dag.heads);
+
+        let branch2 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (8_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
+        let cursor2 = dag.add_node(branch2, None).unwrap();
+        println!("");
+        println!("dag heads {:?}", dag.heads);
+        println!("cursor {:?}", cursor2);
+
+        let (res, _)= dag.query(Some(cursor2));
+        println!("");
+        println!("result {:?}", res);
+        assert!(res.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
+
+    }
 
     #[test]
     // when creating branches the heads of the branches should stay in the cursor
@@ -407,7 +451,7 @@ mod tests {
         let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
         let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
         let mut cursor = dag.add_node(node, None).unwrap();
-        assert!(cursor.set.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
+        assert!(cursor.heads.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
 
         for i in 0..10 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
@@ -415,9 +459,9 @@ mod tests {
             cursor = dag.add_node(node, Some(cursor)).unwrap();
 
             for hash in &last_hashes {
-                assert!(cursor.set.get(hash).is_some(), "the new cursor should include the old nodes");
+                assert!(cursor.heads.get(hash).is_some(), "the new cursor should include the old nodes");
             }
-            assert!(cursor.set.get(&hash).is_some(), "the new cursor should include the new node");
+            assert!(cursor.heads.get(&hash).is_some(), "the new cursor should include the new node");
 
             last_hashes.push(hash);
         }
@@ -433,7 +477,7 @@ mod tests {
         let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
         let mut last_hash: Vec<u8> = node.hash.clone();
         let mut cursor = dag.add_node(node, None).unwrap();
-        assert!(cursor.set.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
+        assert!(cursor.heads.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
 
         for i in 0..10 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![last_hash], 0);
@@ -441,9 +485,9 @@ mod tests {
             cursor = dag.add_node(node, Some(cursor)).unwrap();
 
             for hash in &last_hashes {
-                assert!(cursor.set.get(hash).is_none(), "the new cursor should NOT include the old nodes");
+                assert!(!cursor.is_head(hash), "the new cursor should NOT include the old nodes");
             }
-            assert!(cursor.set.get(&hash).is_some(), "the new cursor should include the new node");
+            assert!(cursor.is_head(&hash), "the new cursor should include the new node");
 
             last_hashes.push(hash.clone());
             last_hash = hash;
