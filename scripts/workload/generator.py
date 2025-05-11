@@ -101,19 +101,19 @@ def gen_workload(id, time):
                 patient = select_patient()
                 pharmacy = select_pharmacy()
 
-                prescriptions.add(prescription_id)
+                presc = (prescription_id + (id*1_000))
+                prescription_id=prescription_id+1
+                prescriptions.add(presc)
                 path = OPERATIONS[op]["path"]
 
                 data = {
                     "patient": patient,
                     "doctor": doc,
                     "pharmacy":pharmacy,
-                    "id": (prescription_id + (id*1_000)),
+                    "id": presc,
                 }
 
                 elapsed = make_request(op, server_addr+ path, counter, data=data)
-                prescription_id=prescription_id+1
-
 
             case "get_processed_pharmacy_prescriptions":
                 p = select_pharmacy()
