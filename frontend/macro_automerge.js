@@ -205,8 +205,15 @@ app.post('/prescription/:prescription/process', async (req, res) => {
         const start = process.hrtime();
         
         const presc = doc.prescriptionMap[prescription];
-        console.log(doc.prescriptionMap)
-        console.log(presc)
+        if(ENV.debug){
+            console.log(doc.prescriptionMap)
+            console.log(presc)
+        }
+        if (!presc || Object.keys(presc).length===0){
+            console.log(presc)
+            throw new Error(`Prescription ${prescription} Not found in document`);
+
+        }
         doc = Automerge.change(doc, (doc) => {
             doc.prescriptionMap[prescription].processed = true;
 
@@ -240,8 +247,11 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
 
 
         const presc =doc.prescriptionMap[prescription] ??= {} 
-        console.log(presc)
+        if (ENV.debug) {
+            console.log(presc)
+        }
         const ret = presc.medication
+
         //console.log(ret);
 
         const diff = process.hrtime(start);
@@ -286,5 +296,7 @@ app.post('/prescription/:prescription/medication', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    if (ENV.debug) {
+        console.log(`Server running at http://localhost:${port}`);
+    }
 });
