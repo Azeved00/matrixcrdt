@@ -426,7 +426,7 @@ mod tests {
         }
 
         let branch1 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (7_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
-        let _ = dag.add_node(branch1, Some(cursor.clone())).unwrap();
+        let cursor1 = dag.add_node(branch1, Some(cursor.clone())).unwrap();
         println!("dag heads {:?}", dag.heads);
 
         let branch2 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (8_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
@@ -435,10 +435,15 @@ mod tests {
         println!("dag heads {:?}", dag.heads);
         println!("cursor {:?}", cursor2);
 
-        let (res, _)= dag.query(Some(cursor2));
+        let (res1, _)= dag.query(Some(cursor1));
         println!("");
-        println!("result {:?}", res);
-        assert!(res.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
+        println!("result {:?}", res1);
+        assert!(res1.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
+
+        let (res2, _)= dag.query(Some(cursor2));
+        println!("");
+        println!("result {:?}", res2);
+        assert!(res2.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
 
     }
 
