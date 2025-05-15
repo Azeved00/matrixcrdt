@@ -1,4 +1,6 @@
-use std::net::{TcpListener, TcpStream, SocketAddr};
+use std::net::{TcpListener, TcpStream};
+#[cfg(feature = "debug")]
+use std::net::SocketAddr;
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
 #[cfg(feature = "bench")]
@@ -67,9 +69,9 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             println!("{:?}", dag.len());
             match res {
                 Ok(cursor) => {ctx.cursor = cursor;},
-                Err(err) => {
+                Err(_err) => {
 #[cfg(feature = "debug")]
-                    println!("Error when updating: {}", err);
+                    println!("Error when updating: {}", _err);
                     return Message::new(Command::Error, ctx.clock);
                 }
             };
@@ -167,14 +169,14 @@ fn run_server() -> std::io::Result<()>{
                 println!("couldn't get client: {e:?}");
                 return Err(e);
             },
-            Ok((socket, addr)) => {
+            Ok((socket, _addr)) => {
 #[cfg(feature = "debug")]
-                println!("new client: {addr:?}");
+                println!("new client: {_addr:?}");
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
 #[cfg(feature = "debug")]
-                    addr,
+                    addr: _addr,
 #[cfg(feature = "bench")]
                     log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", addr.port()))),
                     cursor: QueryCursor::default(),

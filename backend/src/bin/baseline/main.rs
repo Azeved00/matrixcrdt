@@ -156,11 +156,13 @@ async fn run_server() -> std::io::Result<()>  {
     loop {
         match listener.accept(){
             Err(e) => {
+#[cfg(feature = "debug")]
                 println!("couldn't get client: {e:?}");
                 return Err(e);
             },
-            Ok((socket, addr)) => {
-                println!("new client: {addr:?}");
+            Ok((socket, _addr)) => {
+#[cfg(feature = "debug")]
+                println!("new client: {:?}", _addr);
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),

@@ -1,5 +1,5 @@
 use std::fmt::{self, Formatter, Debug};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::io;
 use std::vec::Vec;
 use core::marker::PhantomData;
@@ -135,7 +135,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     /// Get the node from the dag with the specified Hash
     ///
     /// if there is no node with the given hash, `None` is returned
-    pub fn get_node(&self, hash: &Hash) -> Option<&Rc<Node<O>>> {
+    pub fn get_node(&self, hash: &Hash) -> Option<&Arc<Node<O>>> {
         self.dag.get_node(hash)
     }
 

@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet, BinaryHeap, VecDeque};
 use std::cmp;
 use std::io;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::node::Node;
 use super::Hash;
@@ -23,9 +23,9 @@ use super::QueryCursor;
 pub struct MerkleDag<O>
   where O: Clone, O: Into<Vec<u8>>, O: Debug,
 {
-    pub(super) dag: BTreeMap<Hash, Rc<Node<O>>>,
-    pub(super) heads: BTreeMap<Hash, Rc<Node<O>>>,
-    pub(super) topo: Vec<Rc<Node<O>>>,
+    pub(super) dag: BTreeMap<Hash, Arc<Node<O>>>,
+    pub(super) heads: BTreeMap<Hash, Arc<Node<O>>>,
+    pub(super) topo: Vec<Arc<Node<O>>>,
     partial: bool,
     top_layer: usize,
 }
@@ -57,7 +57,7 @@ impl<O> MerkleDag< O>
     }
 
     /// Get a Node with a cetain hash from the dag
-    pub fn get_node(&self, hash: &Hash) -> Option<&Rc<Node<O>>> {
+    pub fn get_node(&self, hash: &Hash) -> Option<&Arc<Node<O>>> {
         self.dag.get(hash)
     }
 
@@ -106,10 +106,10 @@ impl<O> MerkleDag< O>
 
         let mut nn = node.clone();
         nn.index = self.topo.len();
-        let nrf = Rc::new(nn);
-        self.dag.insert(node.hash.clone(), Rc::clone(&nrf));
-        self.topo.push(Rc::clone(&nrf));
-        self.heads.insert(node.hash.clone(), Rc::clone(&nrf));
+        let nrf = Arc::new(nn);
+        self.dag.insert(node.hash.clone(), Arc::clone(&nrf));
+        self.topo.push(Arc::clone(&nrf));
+        self.heads.insert(node.hash.clone(), Arc::clone(&nrf));
 
         cursor.heads.insert(node.hash.clone());
 
@@ -154,7 +154,7 @@ impl<O> MerkleDag< O>
                 stack.push(&parent); 
             }
 
-            self.dag.insert(n.hash.clone(), Rc::new(n.clone())); 
+            self.dag.insert(n.hash.clone(), Arc::new(n.clone())); 
         }
 
         self.top_layer = cmp::max(self.top_layer, dag.top_layer);
@@ -218,13 +218,13 @@ impl<O> MerkleDag< O>
     }
     
     /*
-    fn subset_head<F>(&self,condition: F,mut dag:BTreeMap<Hash, Rc<Node<O>>>, head: Rc<Node<O>>) 
-        -> BTreeMap<Hash, Rc<Node<O>>>
+    fn subset_head<F>(&self,condition: F,mut dag:BTreeMap<Hash, Arc<Node<O>>>, head: Arc<Node<O>>) 
+        -> BTreeMap<Hash, Arc<Node<O>>>
         where F: Fn(&Node<O>) -> bool
     {
-        let mut queue:VecDeque<Rc<Node<O>>> = VecDeque::new();
-        queue.push_back(Rc::clone(&head));
-        dag.insert(head.hash.clone(), Rc::clone(&head));
+        let mut queue:VecDeque<Arc<Node<O>>> = VecDeque::new();
+        queue.push_back(Arc::clone(&head));
+        dag.insert(head.hash.clone(), Arc::clone(&head));
 
         while let Some(node) = queue.pop_front() {
             for p_hash in node.parents {
@@ -233,7 +233,7 @@ impl<O> MerkleDag< O>
                     continue
                 }
 
-                let a = dag.insert(parent.hash.clone(), Rc::clone(parent));
+                let a = dag.insert(parent.hash.clone(), Arc::clone(parent));
                 match a {
                     None => {
                         queue.push_back(parent.clone());
