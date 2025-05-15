@@ -1,4 +1,5 @@
 use std::fmt::{self, Formatter, Debug};
+use std::rc::Rc;
 use std::io;
 use std::vec::Vec;
 use core::marker::PhantomData;
@@ -102,6 +103,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     /// This function first check if d is fully contained by d
     /// if yes then nothing is done
     /// otherwise union of dags is performed
+    /*
     #[deprecated]
     pub fn union(&mut self,d : MerkleDag<O>) -> bool{
         let all_inside = d.heads.keys().all(|leaf| {
@@ -118,6 +120,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
         }
         return false;
     }
+    */
 
     /// calculate the linearization of the Authenticated Merkle Dag
     pub fn linearize(&self) -> Vec<Node<O>> {
@@ -132,7 +135,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     /// Get the node from the dag with the specified Hash
     ///
     /// if there is no node with the given hash, `None` is returned
-    pub fn get_node(&self, hash: &Hash) -> Option<&Node<O>> {
+    pub fn get_node(&self, hash: &Hash) -> Option<&Rc<Node<O>>> {
         self.dag.get_node(hash)
     }
 
@@ -220,7 +223,7 @@ mod tests {
 
         let node42 = dag.dag.dag.remove(&node42_hash).unwrap();
         assert!(!dag.verify(), "Verification should fail if a node's parent is not inside the dag");
-        dag.add_node(node42, None).unwrap();
+        dag.add_node((*node42).clone(), None).unwrap();
         assert!(dag.verify(), "Re-inserting the node should restore the verifiability");
 
         // testing if an unverified node is inside the dag is not necessary

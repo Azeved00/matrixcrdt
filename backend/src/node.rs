@@ -22,6 +22,7 @@ pub struct Node<O>
     pub parents: Vec<Hash>,
     pub data: O,
     pub layer: usize,
+    pub index: usize,
 }
 
 impl<O> Node<O>
@@ -57,6 +58,7 @@ impl<O> Node<O>
             parents: parents.clone(),
             hash: mac.finalize().into_bytes().to_vec(),
             layer,
+            index: 0,
         }
     }
 

@@ -1,11 +1,11 @@
-use log::{info,error};
+use log::error;
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use std::collections::BTreeMap;
-use std::collections::{HashMap, BinaryHeap, VecDeque};
+use std::collections::{HashMap, HashSet, BinaryHeap, VecDeque};
 use std::cmp;
 use std::io;
-use serde::{Serialize, Deserialize};
+use std::rc::Rc;
 
 use super::node::Node;
 use super::Hash;
@@ -19,18 +19,19 @@ use super::QueryCursor;
 /// Furthermore, the structure differentiates between a partial and a total Dag
 /// a total dag is a dag such that for all nodes all parents are in the dag while
 /// a partial dag is a dag in which the parents of some nodes are not inside the dag
-#[derive(Serialize, Deserialize,Clone)]
+#[derive(Clone)]
 pub struct MerkleDag<O>
   where O: Clone, O: Into<Vec<u8>>, O: Debug,
 {
-    pub(super) dag: BTreeMap<Hash, Node<O>>,
+    pub(super) dag: BTreeMap<Hash, Rc<Node<O>>>,
+    pub(super) heads: BTreeMap<Hash, Rc<Node<O>>>,
+    pub(super) topo: Vec<Rc<Node<O>>>,
     partial: bool,
     top_layer: usize,
-    pub(super) heads: BTreeMap<Hash, Node<O>>,
 }
 
 
-impl<O> MerkleDag<O> 
+impl<O> MerkleDag< O> 
     where O: Clone, O: Into<Vec<u8>>, O: Debug,
 {
     /// Create a new empty graph
@@ -41,6 +42,7 @@ impl<O> MerkleDag<O>
             partial: false,
             top_layer: 0,
             heads: BTreeMap::new(), 
+            topo: Vec::new(),
         }
     }
 
@@ -55,7 +57,7 @@ impl<O> MerkleDag<O>
     }
 
     /// Get a Node with a cetain hash from the dag
-    pub fn get_node(&self, hash: &Hash) -> Option<&Node<O>> {
+    pub fn get_node(&self, hash: &Hash) -> Option<&Rc<Node<O>>> {
         self.dag.get(hash)
     }
 
@@ -69,7 +71,8 @@ impl<O> MerkleDag<O>
     /// This method has temporal complexity: O(p. log n) where
     ///     p is number of parents of the node
     ///     n is the number of nodes of the graph
-    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>) -> io::Result<QueryCursor>
+    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>)
+        -> io::Result<QueryCursor>
     {
         if self.dag.contains_key(&node.hash){
             return match opt_cursor {
@@ -81,24 +84,10 @@ impl<O> MerkleDag<O>
                 },
             }
         }
-
-
         let mut cursor = match opt_cursor {
             None => QueryCursor::new(),
-            Some(c) => c
+            Some(c) => c,
         };
-
-        for parent in &node.parents {
-            if self.heads.contains_key(parent) {
-                cursor.heads.remove(parent);
-            }
-            else {
-                cursor.forks.insert(parent.clone());
-            }
-        }
-
-        cursor.heads.insert(node.hash.clone());
-
 
         for parent_hash in &node.parents {
             let parent = self.dag.get(parent_hash);
@@ -109,13 +98,20 @@ impl<O> MerkleDag<O>
                 Some(_) => {}
             }
 
-
+            cursor.heads.remove(parent_hash);
             self.heads.remove(parent_hash);
         }
 
         self.top_layer = cmp::max(self.top_layer, node.layer);
-        self.dag.insert(node.hash.clone(),node.clone());
-        self.heads.insert(node.hash.clone(),node.clone());
+
+        let mut nn = node.clone();
+        nn.index = self.topo.len();
+        let nrf = Rc::new(nn);
+        self.dag.insert(node.hash.clone(), Rc::clone(&nrf));
+        self.topo.push(Rc::clone(&nrf));
+        self.heads.insert(node.hash.clone(), Rc::clone(&nrf));
+
+        cursor.heads.insert(node.hash.clone());
 
         return Ok(cursor);
     }
@@ -127,7 +123,7 @@ impl<O> MerkleDag<O>
     /// Complefity $O(N+v)$ where 
     /// $N$ is the number of nodes and 
     /// $E$ is the number of conections between nodes
-    #[deprecated]
+    /*#[deprecated]
     pub fn union(&mut self, dag:Self) {
         let mut stack : Vec<&Node<O>> = Vec::new();
 
@@ -158,11 +154,11 @@ impl<O> MerkleDag<O>
                 stack.push(&parent); 
             }
 
-            self.dag.insert(n.hash.clone(), n.clone()); 
+            self.dag.insert(n.hash.clone(), Rc::new(n.clone())); 
         }
 
         self.top_layer = cmp::max(self.top_layer, dag.top_layer);
-    }
+    }*/
 
     /// Return a valid linearization of the Dag,
     /// i.e. a topological sort of the Dag
@@ -192,7 +188,7 @@ impl<O> MerkleDag<O>
         }
 
         while let Some(node) = queue.pop_front() {
-            res.push(node.clone());
+            res.push((*node).clone());
 
             for parent_hash in &node.parents {
                 if let Some(parent_node) = self.dag.get(parent_hash) {
@@ -221,12 +217,14 @@ impl<O> MerkleDag<O>
         return self.heads.keys().cloned().collect();
     }
     
-    fn subset_head<F>(&self,condition: F,mut dag:BTreeMap<Hash, Node<O>>, head: Node<O>) -> BTreeMap<Hash, Node<O>>
+    /*
+    fn subset_head<F>(&self,condition: F,mut dag:BTreeMap<Hash, Rc<Node<O>>>, head: Rc<Node<O>>) 
+        -> BTreeMap<Hash, Rc<Node<O>>>
         where F: Fn(&Node<O>) -> bool
     {
-        let mut queue:VecDeque<Node<O>> = VecDeque::new();
-        queue.push_back(head.clone());
-        dag.insert(head.hash.clone(), head);
+        let mut queue:VecDeque<Rc<Node<O>>> = VecDeque::new();
+        queue.push_back(Rc::clone(&head));
+        dag.insert(head.hash.clone(), Rc::clone(&head));
 
         while let Some(node) = queue.pop_front() {
             for p_hash in node.parents {
@@ -235,7 +233,7 @@ impl<O> MerkleDag<O>
                     continue
                 }
 
-                let a = dag.insert(parent.hash.clone(), parent.clone());
+                let a = dag.insert(parent.hash.clone(), Rc::clone(parent));
                 match a {
                     None => {
                         queue.push_back(parent.clone());
@@ -262,25 +260,8 @@ impl<O> MerkleDag<O>
     pub fn subset<F>(&self, condition: F) -> Self
         where F: Fn(&Node<O>) -> bool
     {
-        let mut new_dag = BTreeMap::new();
-        let mut new_heads = BTreeMap::new();
-
-
-        for (hash, node) in &self.heads {
-            if condition(node) {
-                info!("head included in subset");
-                new_heads.insert(hash.clone(), node.clone());
-                new_dag = self.subset_head(&condition, new_dag, node.clone());
-            }
-        }
-
-        Self {
-            dag: new_dag,
-            heads: new_heads,
-            top_layer: 0,
-            partial: true,
-        }
-    }
+        todo!("Should i reimplement this");
+    }*/
 
 
     /// Use a function to create a subset of the merkle dag,
@@ -303,32 +284,48 @@ impl<O> MerkleDag<O>
             None => QueryCursor::new()
         };
         let mut heap = BinaryHeap::<&Node<O>>::new();
+        let mut vis :Vec<bool> = vec![false; self.topo.len() - cursor.index];
         let mut res = Vec::<O>::new();
 
         for (_, node) in &self.heads {
-            if cursor.contains(&node.hash) { 
-                continue; 
+            if node.index < cursor.index {
+                continue
             }
+
             heap.push(node);
         }
-        
+
+        for head_hash in &cursor.heads{
+            let head = self.get_node(&head_hash).unwrap();
+            if head.index>cursor.index {
+                vis[head.index-cursor.index] = true;
+            }
+        }
+
         while !heap.is_empty() {
-            let top = heap.pop().expect("Heap should be empty");
+            let top = heap.pop().expect("Heap should not be empty");
+
             for parent_hash in &top.parents {
-                if cursor.contains(&parent_hash) {
-                    continue;
-                }
                 let parent = self.get_node(&parent_hash).unwrap();
+                if parent.index < cursor.index {
+                    continue
+                }
+                else if vis[top.index - cursor.index]{
+                    vis[parent.index - cursor.index] = true;
+                } 
                 heap.push(parent);
             }
             
-            res.push(top.data.clone());
+            if !vis[top.index - cursor.index]{
+                res.push(top.data.clone());
+            } 
         }
-        
 
-        let heads : Vec<Vec<u8>> = self.heads.keys().cloned().collect();
+        let heads : HashSet<Vec<u8>> = self.heads.keys().cloned().collect();
         let mut cursor = QueryCursor::new();
-        cursor.heads = heads.into_iter().collect();
+        cursor.heads = heads;
+        cursor.index = self.topo.len();
+
         return (res.into_iter().rev().collect(), cursor)
     }
 }
@@ -401,7 +398,9 @@ mod tests {
         let (changes, _c) = dag.query(None);
         assert_eq!(changes.len(), dag.len(), "Querying without cursor, outputs the full dag");
 
+        println!("{:}", cursor.index);
         let (changes, cursor2) = dag.query(Some(cursor));
+        println!("{:}", cursor2.index);
         assert_eq!(changes.len() + len1, dag.len(), "Querying with cursor outputs the new nodes");
 
         let (changes, _c) = dag.query(Some(cursor2));
@@ -427,12 +426,13 @@ mod tests {
 
         let branch1 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (7_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
         let cursor1 = dag.add_node(branch1, Some(cursor.clone())).unwrap();
-        println!("dag heads {:?}", dag.heads);
+        println!("dag heads {:?}", dag.get_heads());
+        println!("cursor {:?}", cursor1);
 
         let branch2 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (8_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
         let cursor2 = dag.add_node(branch2, None).unwrap();
         println!("");
-        println!("dag heads {:?}", dag.heads);
+        println!("dag heads {:?}", dag.get_heads());
         println!("cursor {:?}", cursor2);
 
         let (res1, _)= dag.query(Some(cursor1));
@@ -453,22 +453,29 @@ mod tests {
         let mut dag = MerkleDag::<Vec<u8>>::new();
         let key : Vec<u8> = "".to_string().into();
 
-        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
+        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (400_usize).to_be_bytes().into(), &vec![], 0);
         let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
         let mut cursor = dag.add_node(node, None).unwrap();
-        assert!(cursor.heads.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
+        assert!(cursor.contains(&last_hashes[0]), 
+            "the first cursor should have the first node added");
 
         for i in 0..10 as usize {
             let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            let hash = node.hash.clone();
+            let nhash = node.hash.clone();
             cursor = dag.add_node(node, Some(cursor)).unwrap();
 
-            for hash in &last_hashes {
-                assert!(cursor.heads.get(hash).is_some(), "the new cursor should include the old nodes");
-            }
-            assert!(cursor.heads.get(&hash).is_some(), "the new cursor should include the new node");
+            println!("heads {:?}", dag.get_heads());
+            println!("last {:?}", last_hashes);
+            println!("cursor {:?}", cursor);
 
-            last_hashes.push(hash);
+            for hash in &last_hashes {
+                assert!(cursor.contains(hash),
+                    "the new cursor should include the old nodes");
+            }
+            assert!(cursor.contains(&nhash), 
+                "the new cursor should include the new node");
+
+            last_hashes.push(nhash);
         }
     }
 
@@ -489,10 +496,14 @@ mod tests {
             let hash = node.hash.clone();
             cursor = dag.add_node(node, Some(cursor)).unwrap();
 
+            println!("heads {:?}", dag.get_heads());
+            println!("last {:?}", last_hashes);
+            println!("cursor {:?}", cursor);
+
             for hash in &last_hashes {
-                assert!(!cursor.is_head(hash), "the new cursor should NOT include the old nodes");
+                assert!(!cursor.contains(hash), "the new cursor should NOT include the old nodes");
             }
-            assert!(cursor.is_head(&hash), "the new cursor should include the new node");
+            assert!(cursor.contains(&hash), "the new cursor should include the new node");
 
             last_hashes.push(hash.clone());
             last_hash = hash;
