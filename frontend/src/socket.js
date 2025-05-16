@@ -91,36 +91,58 @@ function sendAndWait(message) {
 }
 
 export async function query(change_fn) {
-    let code =  ENV.state ? "StatefulQuery" : "StatelessQuery";
+    const timing = {};
+
+    const code = ENV.state ? "StatefulQuery" : "StatelessQuery";
+
+    const startSerialize = process.hrtime.bigint();
     let message = new Message(code, clock, "");
+    const serialized = message.serialize();
+    const endSerialize = process.hrtime.bigint();
 
     clock += 1n;
-    const msg = await sendAndWait(message.serialize())
+    const msg = await sendAndWait(serialized);
 
+    
+    const startDeserialize = process.hrtime.bigint();
     const cmd = msg.get_command();
-    if (cmd === "Error") {
-        throw new Error("Received error from backend");
-    } else if (cmd !== "Acknowledge") {
-        throw new Error("Received something strange from backend");
-    }
+    if (cmd === "Error") throw new Error("Received error from backend");
+    else if (cmd !== "Acknowledge") throw new Error("Received something strange from backend");
 
     const array = JSON.parse(msg.data);
-    
+    const endDeserialize = process.hrtime.bigint();
+    timing.serialization = Number(endSerialize - startSerialize) / 1000 +
+        Number(endDeserialize - startDeserialize) / 1000;
+
+    const start_apply = process.hrtime.bigint();
     for (const ser_change of array) {
-        let buffer =  Buffer.from(ser_change) 
-        change_fn(buffer)
+        const buffer = Buffer.from(ser_change);
+        change_fn(buffer);
+    }
+    const end_apply = process.hrtime.bigint();
+    timing.state_apply  = Number(end_apply - start_apply) / 1000;
+
+    if (ENV.debug) {
+        console.log(`Queried Changes (${array.length}) applied successfully`);
+        console.log("Timing Info:", timing);
     }
 
-    if(ENV.debug){
-        console.log("Queried Changes("+ array.length+ ") applied succesfuly")
-    }
+    return timing;
 }
 
 export async function save(data) {
+    const timing = {};
+
+    const startSerialize = process.hrtime.bigint();
     let message = new Message("Update", clock, data);
     clock += 1n;
+    const endSerialize = process.hrtime.bigint();
+
     const ret = await sendAndWait(message.serialize())
+
+    const startDeserialize = process.hrtime.bigint();
     const cmd = ret.get_command();
+    const endDeserialize = process.hrtime.bigint();
 
     if(ENV.debug){
         console.log(cmd);
@@ -136,4 +158,9 @@ export async function save(data) {
     if(ENV.debug){
         console.log("Updated Successfuly");
     }
+
+    timing.serialization = Number(endSerialize - startSerialize) / 1000 +
+        Number(endDeserialize - startDeserialize) / 1000;
+
+    return timing;
 }

@@ -29,15 +29,17 @@ class Prescription {
 app.use(express.json());
 async function save(change){
     const ser_change = msgpack.encode(change);
-    await SOCKET.save(ser_change)
+    const times = await SOCKET.save(ser_change);
+    return times;
 }
 
 async function query() {
-    await SOCKET.query((buffer) => {
+    const times = await SOCKET.query((buffer) => {
         let change_buffer = msgpack.decode(buffer);
         [doc] = Automerge.applyChanges(doc,[new Uint8Array(change_buffer)]);
         //console.log("after_changes", Automerge.toJS(doc));
-    })
+    });
+    return times;
 }
 //-------------------------------------------------------
 // PATIENTS
@@ -47,13 +49,14 @@ app.get('/patient/:patient', async (req, res) => {
     try{
         const requestId = req.headers['request-id'] || -1;
         const start = process.hrtime();
+        const query_times = await query();
 
         if (ENV.debug){
             console.log(req.params.patient)
         }
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
         logger.log(requestId, SOCKET.clock, "get_patient", time);
         res.status(200).json({});
     } catch (err) {
@@ -71,14 +74,14 @@ app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
     try{
         const pharmacy = req.params.pharmacy;
         const requestId = req.headers['request-id'] || -1;
-        await query()
+        const query_times = await query();
         const start = process.hrtime();
 
         const ret = doc["pharmacyMap"][pharmacy]; 
         //console.log(ret);
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
         logger.log(requestId, SOCKET.clock, "get_pharmacy_prescriptions", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -92,7 +95,7 @@ app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
     try{
         const pharmacy = req.params.pharmacy;
         const requestId = req.headers['request-id'] || -1;
-        await query();
+        const query_times = await query();
         const start = process.hrtime();
         
         const processed = doc["processedMap"][pharmacy]
@@ -101,7 +104,7 @@ app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
         logger.log(requestId, SOCKET.clock, "get_processed_prescription", time);
         res.status(200).json(processed);
     } catch (err) {
@@ -118,14 +121,14 @@ app.get('/staff/:doctor/prescriptions', async (req, res) => {
     try{
         const doctor = req.params.doctor;
         const requestId = req.headers['request-id'] || -1;
-        await query()
+        const query_times = await query();
         const start = process.hrtime();
 
         const ret =doc["staffMap"][doctor]; 
         //console.log(ret);
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;;
         logger.log(requestId, SOCKET.clock, "get_staff_prescription", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -142,7 +145,7 @@ app.get('/prescription/:prescription', async (req, res) =>{
     try {
         const prescription = req.params.prescription;
         const requestId = req.headers['request-id'] || -1;
-        await query();
+        const query_times = await query();
         const start = process.hrtime();
 
         const ret = doc.prescriptionMap[prescription];
@@ -152,7 +155,7 @@ app.get('/prescription/:prescription', async (req, res) =>{
         }
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
         logger.log(requestId, SOCKET.clock, "get_prescription", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -186,10 +189,10 @@ app.post('/prescription', async  (req, res) => {
         const change = Automerge.getLastLocalChange(doc);
 
         counter += 1
+        await save(change);
         const diff = process.hrtime(start);
         const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
         logger.log(requestId, SOCKET.clock, "create_prescription", time);
-        await save(change);
         res.status(200).json({});
     } catch (err) {
         console.log(err)
@@ -222,10 +225,10 @@ app.post('/prescription/:prescription/process', async (req, res) => {
         });
         const change = Automerge.getLastLocalChange(doc);
         
+        await save(change);
         const diff = process.hrtime(start);
         const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
         logger.log(requestId, SOCKET.clock, "process_prescription", time);
-        await save(change);
         res.status(200).json({});
     } catch (err) {
         console.log(err)
@@ -242,7 +245,7 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
     try {
         const prescription = req.params.prescription;
         const requestId = req.headers['request-id'] || -1;
-        await query();
+        const query_times = await query();
         const start = process.hrtime();
 
 
@@ -255,7 +258,7 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
         //console.log(ret);
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
+        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
         logger.log(requestId, SOCKET.clock, "get_prescription_medication", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -283,10 +286,10 @@ app.post('/prescription/:prescription/medication', async (req, res) => {
         });
         const change =Automerge.getLastLocalChange(doc)
 
+        await save(change);
         const diff = process.hrtime(start);
         const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3);
         logger.log(requestId, SOCKET.clock,"update_prescription_medication", time);
-        await save(change);
         res.status(200).json();
     } catch (err) {
         console.log(err)
