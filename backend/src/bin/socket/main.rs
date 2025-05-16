@@ -178,7 +178,7 @@ fn run_server() -> std::io::Result<()>{
 #[cfg(feature = "debug")]
                     addr: _addr,
 #[cfg(feature = "bench")]
-                    log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", addr.port()))),
+                    log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", _addr.port()))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {

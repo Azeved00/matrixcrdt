@@ -86,4 +86,4 @@ if __name__ == "__main__":
     })
     df = df[['id', 'client_operation', 'back_id', 'dag_operation', 'total_time', 'front_time', 'back_time']]
     print(df.head())
-    #df.to_csv(f"final.csv", index=False)
+    df.to_csv(f"final.csv", index=False)
