@@ -26,7 +26,7 @@ def plot_graphs(df):
         indices = range(len(subset))
         
         plt.figure(figsize=(10, 6))
-        plt.bar(indices, extra_time, bottom=backend_time + frontend_time, label='Other Time', color='green')
+        #plt.bar(indices, extra_time, bottom=backend_time + frontend_time, label='Other Time', color='green')
         plt.bar(indices, frontend_time, bottom=backend_time , label='Frontend Time', color='orange')
         plt.bar(indices, backend_time, label='Backend Time', color='skyblue')
 

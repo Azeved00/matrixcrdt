@@ -31,8 +31,8 @@ impl LogFile {
     }
 
     pub fn log(&mut self,size:usize, op: String, time: Duration, space:usize) {
+        self.index+=1;
         writeln!(self.log_file,"{:},{:},{:},{:},{:}", self.index, size, op, time.as_micros(), space)
             .unwrap();
-        self.index+=1;
     }
 }

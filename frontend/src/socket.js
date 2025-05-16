@@ -75,6 +75,7 @@ export function init(port, addr, localPort) {
 
 // Function to send data and wait for response
 function sendAndWait(message) {
+    clock += 1n;
     return new Promise((resolve, reject) => {
         if (!isConnected) return reject("Socket not connected");
 
@@ -100,7 +101,6 @@ export async function query(change_fn) {
     const serialized = message.serialize();
     const endSerialize = process.hrtime.bigint();
 
-    clock += 1n;
     const msg = await sendAndWait(serialized);
 
     
@@ -135,7 +135,6 @@ export async function save(data) {
 
     const startSerialize = process.hrtime.bigint();
     let message = new Message("Update", clock, data);
-    clock += 1n;
     const endSerialize = process.hrtime.bigint();
 
     const ret = await sendAndWait(message.serialize())

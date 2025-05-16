@@ -56,7 +56,7 @@ app.get('/patient/:patient', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
+        const time = (diff[0] * 1e6 + diff[1] / 1e3 + query_times.state_apply).toFixed(3);
         logger.log(requestId, SOCKET.clock, "get_patient", time);
         res.status(200).json({});
     } catch (err) {
@@ -81,7 +81,7 @@ app.get('/pharmacy/:pharmacy/prescriptions', async (req, res) => {
         //console.log(ret);
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
+        const time = (diff[0] * 1e6 + diff[1] / 1e3 + query_times.state_apply).toFixed(3);
         logger.log(requestId, SOCKET.clock, "get_pharmacy_prescriptions", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -104,7 +104,7 @@ app.get('/pharmacy/:pharmacy/processed', async (req, res) => {
         }
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
+        const time = (diff[0] * 1e6 + diff[1] / 1e3 + query_times.state_apply).toFixed(3);
         logger.log(requestId, SOCKET.clock, "get_processed_prescription", time);
         res.status(200).json(processed);
     } catch (err) {
@@ -128,7 +128,7 @@ app.get('/staff/:doctor/prescriptions', async (req, res) => {
         //console.log(ret);
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;;
+        const time = (diff[0] * 1e6 + diff[1] / 1e3 + query_times.state_apply).toFixed(3);;
         logger.log(requestId, SOCKET.clock, "get_staff_prescription", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -155,7 +155,7 @@ app.get('/prescription/:prescription', async (req, res) =>{
         }
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
+        const time = (diff[0] * 1e6 + diff[1] / 1e3 + query_times.state_apply).toFixed(3);
         logger.log(requestId, SOCKET.clock, "get_prescription", time);
         res.status(200).json(ret);
     } catch (err) {
@@ -258,7 +258,7 @@ app.get('/prescription/:prescription/medication', async (req, res) => {
         //console.log(ret);
 
         const diff = process.hrtime(start);
-        const time = (diff[0] * 1e6 + diff[1] / 1e3).toFixed(3) + query_times.state_apply;
+        const time = (diff[0] * 1e6 + diff[1] / 1e3 + query_times.state_apply).toFixed(3);
         logger.log(requestId, SOCKET.clock, "get_prescription_medication", time);
         res.status(200).json(ret);
     } catch (err) {

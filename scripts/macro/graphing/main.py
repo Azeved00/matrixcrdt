@@ -17,8 +17,9 @@ if __name__ == "__main__":
     validation_errors = validate_df(merged_df)
 
     if validation_errors:
-        for err in validation_errors:
+        for err in validation_errors[0:5]:
             print(err)
+        print(f"Finished with {len(validation_errors)} errors")
         sys.exit(1)
     else:
         print("CSV passed all validation checks.")
