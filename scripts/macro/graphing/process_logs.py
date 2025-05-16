@@ -19,7 +19,7 @@ def calculate_files(path, n):
 
 def merge_triples(triple_list):
     df_list=[]
-    for triple in triple_list:
+    for i, triple in enumerate(triple_list):
         script_log = pd.read_csv(triple[0])
         script_log = script_log.add_suffix("_script")
         front_log = pd.read_csv(triple[1])
@@ -29,6 +29,8 @@ def merge_triples(triple_list):
 
         merged = pd.merge(script_log, front_log, left_on="id_script", right_on="req_id_front")
         final_df = pd.merge(merged, back_log, left_on="clock_front", right_on="id_back")
+
+        final_df["thread_id"] = i
 
         df_list.append(final_df)
 
@@ -60,12 +62,7 @@ def plot_data(df):
     plt.suptitle("Operation Times by ID (Per Prescription)", fontsize=16, y=1.02)
     plt.show()
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <path>")
-        sys.exit(1)
-
-    input_path = sys.argv[1]
+def merge_files(input_path):
     client_num = get_files_number(input_path)//3
     file_triples = calculate_files(input_path, client_num)
     client_df = merge_triples(file_triples)
@@ -84,6 +81,16 @@ if __name__ == "__main__":
         'elapsed_front': 'front_time',
         'time_back': 'back_time'
     })
-    df = df[['id', 'client_operation', 'back_id', 'dag_operation', 'total_time', 'front_time', 'back_time']]
-    print(df.head())
-    df.to_csv(f"final.csv", index=False)
+    df = df[['thread_id', 'id', 'client_operation', 'back_id', 'dag_operation', 'total_time', 'front_time', 'back_time']]
+    return df
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <path>")
+        sys.exit(1)
+
+    input_path = sys.argv[1]
+    merged = merge_files(input_path)
+    print(merged.head())
+    merged.to_csv(f"final.csv", index=False)
