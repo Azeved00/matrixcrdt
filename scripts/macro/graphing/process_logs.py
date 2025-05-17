@@ -27,8 +27,9 @@ def merge_triples(triple_list):
         back_log = pd.read_csv(triple[2])
         back_log = back_log.add_suffix("_back")
 
-        merged = pd.merge(script_log, front_log, left_on="id_script", right_on="req_id_front")
-        final_df = pd.merge(merged, back_log, left_on="clock_front", right_on="id_back")
+        merged = pd.merge(script_log, front_log, left_on="id_script", right_on="req_id_front", how="outer")
+        merged['id_script'] = merged['id_script'].fillna(-1).astype('int64')
+        final_df = pd.merge(merged, back_log, left_on="clock_front", right_on="id_back", how="outer")
 
         final_df["thread_id"] = i
 
@@ -73,7 +74,7 @@ def merge_files(input_path):
     df = df.drop(['clock_front', 'req_id_front', 'op_front'], axis=1)
     df = df.drop(['dag_size_back', 'space_back'], axis=1)
     df = df.rename(columns={
-        'id_script': 'id', 
+        'id_script': 'front_id', 
         'operation_name_script': 'client_operation', 
         'operation_back':'dag_operation',
         'id_back': 'back_id',
@@ -81,7 +82,7 @@ def merge_files(input_path):
         'elapsed_front': 'front_time',
         'time_back': 'back_time'
     })
-    df = df[['thread_id', 'id', 'client_operation', 'back_id', 'dag_operation', 'total_time', 'front_time', 'back_time']]
+    df = df[['thread_id', 'front_id', 'client_operation', 'back_id', 'dag_operation', 'total_time', 'front_time', 'back_time']]
     return df
 
 
