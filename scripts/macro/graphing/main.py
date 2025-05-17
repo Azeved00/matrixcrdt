@@ -14,6 +14,8 @@ if __name__ == "__main__":
     input_path = sys.argv[1]
     merged_df = merge_files(input_path)
     print(merged_df.head())
+    merged_df.to_csv('final.csv', index=False)
+
     validation_errors = validate_df(merged_df)
 
     if validation_errors:
