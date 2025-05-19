@@ -2,14 +2,14 @@ use log::error;
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
 use std::collections::BTreeMap;
-use std::collections::{HashMap, HashSet, BinaryHeap, VecDeque};
+use std::collections::{HashMap, BinaryHeap, VecDeque};
 use std::cmp;
 use std::io;
 use std::sync::Arc;
+use std::hash::Hash;
 
-use super::node::Node;
-use super::Hash;
-use super::QueryCursor;
+use crate::node::Node;
+use crate::QueryCursor;
 
 
 /// The Merkle dag structure,
@@ -21,18 +21,18 @@ use super::QueryCursor;
 /// a partial dag is a dag in which the parents of some nodes are not inside the dag
 #[derive(Clone)]
 pub struct MerkleDag<O>
-  where O: Clone, O: Into<Vec<u8>>, O: Debug,
+  where O: Clone, O: Debug, O:Hash
 {
-    pub(super) dag: BTreeMap<Hash, Arc<Node<O>>>,
-    pub(super) heads: BTreeMap<Hash, Arc<Node<O>>>,
-    pub(super) topo: Vec<Arc<Node<O>>>,
+    dag: BTreeMap<u64, Arc<Node<O>>>,
+    heads: BTreeMap<u64, Arc<Node<O>>>,
+    topo: Vec<Arc<Node<O>>>,
     partial: bool,
     top_layer: usize,
 }
 
 
-impl<O> MerkleDag< O> 
-    where O: Clone, O: Into<Vec<u8>>, O: Debug,
+impl<O> MerkleDag<O> 
+    where O: Clone, O: Debug, O:Hash
 {
     /// Create a new empty graph
     /// This is done by giving a key to perform the hashes
@@ -46,6 +46,8 @@ impl<O> MerkleDag< O>
         }
     }
 
+    //------------------------- HELPER FUNCTIONS -----------------------------
+
     /// Returns the length of the dag,
     /// i.e. the number of nodes in it
     pub fn len(&self) -> usize {
@@ -56,10 +58,16 @@ impl<O> MerkleDag< O>
         return self.top_layer;
     }
 
-    /// Get a Node with a cetain hash from the dag
-    pub fn get_node(&self, hash: &Hash) -> Option<&Arc<Node<O>>> {
-        self.dag.get(hash)
+    pub(crate) fn get_node(&self, id: &u64) -> Option<&Arc<Node<O>>> {
+        self.dag.get(id)
     }
+
+    /// get the head nodes of the dag
+    pub fn get_heads(&self) -> Vec<u64> {
+        return self.heads.keys().cloned().collect();
+    }
+
+    //------------------------- SPEC IMPLEMENTATION -----------------------------
 
     /// Add a node to the network
     ///
@@ -71,48 +79,83 @@ impl<O> MerkleDag< O>
     /// This method has temporal complexity: O(p. log n) where
     ///     p is number of parents of the node
     ///     n is the number of nodes of the graph
-    pub fn add_node(&mut self, node: Node<O>, opt_cursor: Option<QueryCursor>)
-        -> io::Result<QueryCursor>
+    pub fn insert(&mut self, data:O, opt_cursor: Option<QueryCursor>)
+        -> io::Result<(Arc<Node<O>>, QueryCursor)>
     {
-        if self.dag.contains_key(&node.hash){
-            return match opt_cursor {
-                Some(cursor) => Ok(cursor),
-                None => {
-                    let mut c = QueryCursor::new();
-                    c.heads.insert(node.hash.clone());
-                    Ok(c)
-                },
-            }
-        }
         let mut cursor = match opt_cursor {
             None => QueryCursor::new(),
             Some(c) => c,
         };
 
+        let parent_ids : Vec<u64> = cursor.heads.clone().into_iter().collect();
+        let mut layer = 0usize;
+        for parent_id in &parent_ids{
+            let parent = self.get_node(parent_id);
+            match parent {
+                None => {
+                    return Err(io::Error::new(io::ErrorKind::Other, "Not all parents of the node are in the Dag"));
+                }
+                Some(node) => {
+                    layer = cmp::max(layer, node.layer);
+                }
+            }
+
+            cursor.heads.remove(parent_id);
+            self.heads.remove(parent_id);
+        }
+
+        layer += 1;
+        self.top_layer = cmp::max(self.top_layer, layer);
+
+        let node = Node::new(data, parent_ids, Some(layer), Some(self.topo.len()));
+
+        let nrf = Arc::new(node.clone());
+        self.dag.insert(nrf.id.clone(), Arc::clone(&nrf));
+        self.topo.push(Arc::clone(&nrf));
+        self.heads.insert(nrf.id.clone(), Arc::clone(&nrf));
+
+        cursor.heads.insert(nrf.id.clone());
+        
+
+        return Ok((nrf, cursor));
+    }
+
+    fn insert_node(&mut self, node:Node<O>, opt_cursor: Option<QueryCursor>)
+        -> io::Result<QueryCursor>
+    {
+        let mut cursor = match opt_cursor {
+            None => QueryCursor::new(),
+            Some(c) => c,
+        };
+
+        let mut layer = 0usize; 
         for parent_hash in &node.parents {
             let parent = self.dag.get(parent_hash);
             match parent {
                 None => {
                     return Err(io::Error::new(io::ErrorKind::Other, "Not all parents of the node are in the Dag"));
                 }
-                Some(_) => {}
+                Some(node) => {
+                    layer = cmp::max(layer, node.layer);
+                }
             }
-
-            cursor.heads.remove(parent_hash);
             self.heads.remove(parent_hash);
+            cursor.heads.remove(parent_hash);
         }
 
-        self.top_layer = cmp::max(self.top_layer, node.layer);
+        layer += 1;
+        self.top_layer = cmp::max(self.top_layer, layer);
 
         let mut nn = node.clone();
         nn.index = self.topo.len();
+        nn.layer = layer;
+
         let nrf = Arc::new(nn);
-        self.dag.insert(node.hash.clone(), Arc::clone(&nrf));
+        self.dag.insert(nrf.id.clone(), Arc::clone(&nrf));
         self.topo.push(Arc::clone(&nrf));
-        self.heads.insert(node.hash.clone(), Arc::clone(&nrf));
+        self.heads.insert(nrf.id.clone(), Arc::clone(&nrf));
 
-        cursor.heads.insert(node.hash.clone());
-
+        cursor.heads.insert(nrf.id);
         return Ok(cursor);
     }
     
@@ -175,7 +218,7 @@ impl<O> MerkleDag< O>
         let mut queue = VecDeque::new();
 
         for (_, node) in &self.dag {
-            indegree.entry(node.hash.clone()).or_insert(0);
+            indegree.entry(node.id.clone()).or_insert(0);
             for parent_hash in &node.parents {
                 *indegree.entry(parent_hash.clone()).or_insert(0) += 1;
             }
@@ -192,7 +235,7 @@ impl<O> MerkleDag< O>
 
             for parent_hash in &node.parents {
                 if let Some(parent_node) = self.dag.get(parent_hash) {
-                    if let Some(indeg) = indegree.get_mut(&parent_node.hash) {
+                    if let Some(indeg) = indegree.get_mut(&parent_node.id) {
                         *indeg -= 1;
                         if *indeg == 0 {
                             queue.push_back(parent_node.clone());
@@ -200,7 +243,7 @@ impl<O> MerkleDag< O>
                     }
                 } 
                 else if !self.partial {
-                    error!("Linearization error: parent {:?} of node {:?} is not in dag", parent_hash, node.hash);
+                    error!("Linearization error: parent {:?} of node {:?} is not in dag", parent_hash, node.id);
                 }
             }
         }
@@ -212,10 +255,6 @@ impl<O> MerkleDag< O>
         return res;
     }
 
-    /// get the head nodes of the dag
-    pub fn get_heads(&self) -> Vec<Hash> {
-        return self.heads.keys().cloned().collect();
-    }
     
     /*
     fn subset_head<F>(&self,condition: F,mut dag:BTreeMap<Hash, Arc<Node<O>>>, head: Arc<Node<O>>) 
@@ -284,7 +323,8 @@ impl<O> MerkleDag< O>
             None => QueryCursor::new()
         };
         let mut heap = BinaryHeap::<&Node<O>>::new();
-        let mut vis :Vec<bool> = vec![false; self.topo.len() - cursor.index];
+        let size = self.topo.len() - cursor.index;
+        let mut vis :Vec<bool> = vec![false; size.try_into().unwrap()];
         let mut res = Vec::<O>::new();
 
         for (_, node) in &self.heads {
@@ -297,8 +337,8 @@ impl<O> MerkleDag< O>
 
         for head_hash in &cursor.heads{
             let head = self.get_node(&head_hash).unwrap();
-            if head.index>cursor.index {
-                vis[head.index-cursor.index] = true;
+            if head.index > cursor.index {
+                vis[head.index - cursor.index] = true;
             }
         }
 
@@ -321,9 +361,8 @@ impl<O> MerkleDag< O>
             } 
         }
 
-        let heads : HashSet<Vec<u8>> = self.heads.keys().cloned().collect();
         let mut cursor = QueryCursor::new();
-        cursor.heads = heads;
+        cursor.set_heads(self.get_heads());
         cursor.index = self.topo.len();
 
         return (res.into_iter().rev().collect(), cursor)
@@ -332,15 +371,13 @@ impl<O> MerkleDag< O>
 
 
 impl<O>Debug for MerkleDag<O> 
-    where O: Clone, O: Into<Vec<u8>>, O:Debug,
+    where O: Clone, O:Debug, O:Hash
 {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        let linearization = self.linearize();
         f.debug_struct("Merkle Dag")
             .field("length", &self.dag.len())
             .field("partial", &self.partial)
             .field("heads",  &self.heads)
-            .field("graph",  &linearization)
             .finish()
     }
 }
@@ -348,42 +385,41 @@ impl<O>Debug for MerkleDag<O>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sha3::Sha3_256;
 
     #[test]
     fn initialization() {
-        let dag = MerkleDag::<Vec<u8>>::new();
+        let dag = MerkleDag::<u8>::new();
 
         assert_eq!(dag.get_top_layer(), 0);
         assert_eq!(dag.len(), 0);
     }
     
     #[test]
-    fn insertion(){
-        let mut dag = MerkleDag::<Vec<u8>>::new();
+    fn node_insertion(){
+        let mut dag = MerkleDag::<u8>::new();
+        let node1 = Node::new(1, vec![], None, None);
 
-        let key : Vec<u8> = "".to_string().into();
-        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![], &vec![], 0);
-
-        assert!(dag.add_node(node, None).is_ok(), "Node was not added correctly");
+        assert!(dag.insert_node(node1, None).is_ok(), 
+            "Node was not added correctly");
         assert_eq!(dag.len(), 1);
 
-        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, &vec![1,2,3], &vec![vec![1]], 0);
-        assert!(dag.add_node(node, None).is_err(), "Node whose parents were not in the dag was added");
+        let node2 = Node::new(2, vec![3], None, None);
+        assert!(dag.insert_node(node2, None).is_err(), 
+            "Node whose parents were not in the dag was added");
         assert_eq!(dag.len(), 1);
     }
 
     #[test]
-    fn querying(){
-        let mut dag = MerkleDag::<Vec<u8>>::new();
-        let key : Vec<u8> = "".to_string().into();
+    fn querying_loose_heads(){
+        let mut dag = MerkleDag::<u8>::new();
 
-        let mut t = QueryCursor::new();
+        let mut c = QueryCursor::new();
 
         for i in 0..10 as usize {
-            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            t = dag.add_node(node, Some(t)).unwrap();
-            assert_eq!(t.heads.len(), i+1, "the cursor should include the heads of all nodes");
+            let node = Node::new(i as u8, vec![], None, None);
+            c = dag.insert_node(node, Some(c)).unwrap();
+            assert_eq!(c.heads.len(), i+1, 
+                "the cursor should include all heads of the dag");
         }
 
         let (changes, cursor) = dag.query(None);
@@ -391,122 +427,102 @@ mod tests {
         assert_eq!(len1, dag.len());
             
         for i in 10..20 as usize {
-            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            dag.add_node(node, None).unwrap();
+            let node = Node::new(i as u8, vec![], None, None);
+            dag.insert_node(node, None).unwrap();
         }
 
         let (changes, _c) = dag.query(None);
-        assert_eq!(changes.len(), dag.len(), "Querying without cursor, outputs the full dag");
+        assert_eq!(changes.len(), dag.len(), 
+            "Querying without cursor, outputs the full dag");
 
         println!("{:}", cursor.index);
         let (changes, cursor2) = dag.query(Some(cursor));
         println!("{:}", cursor2.index);
-        assert_eq!(changes.len() + len1, dag.len(), "Querying with cursor outputs the new nodes");
+        assert_eq!(changes.len() + len1, dag.len(), 
+            "Querying with cursor outputs the new nodes");
 
         let (changes, _c) = dag.query(Some(cursor2));
-        assert_eq!(changes.len() , 0 , "Querying twice in a row (with cursor) outputs empty changes array");
+        assert_eq!(changes.len() , 0 , 
+            "Querying twice in a row (with cursor) outputs empty changes array");
     }
     
     #[test]
-    // when querying dag with multiple branches only new nodes should be queried 
-    fn query_multiple_branches() {
-        let mut dag = MerkleDag::<Vec<u8>>::new();
-        let key : Vec<u8> = "".to_string().into();
-        let mut cursor = QueryCursor::new();
-
-        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
-        let mut last_hash: Vec<u8> = node.hash.clone();
-        cursor = dag.add_node(node, Some(cursor)).unwrap();
+    fn query_branches_with_overlaping_history() {
+        let mut dag = MerkleDag::<u8>::new();
+        let mut cursor = QueryCursor::new(); 
+        (_, cursor) = dag.insert(0, Some(cursor)).unwrap();
 
         for i in 0..5 as usize {
-            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![last_hash], 0);
-            last_hash = node.hash.clone();
-            cursor = dag.add_node(node, Some(cursor)).unwrap();
+            (_, cursor) = dag.insert(i as u8, Some(cursor)).unwrap();
         }
 
-        let branch1 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (7_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
-        let cursor1 = dag.add_node(branch1, Some(cursor.clone())).unwrap();
+        let (_, cursor1) = dag.insert(7, Some(cursor.clone())).unwrap();
         println!("dag heads {:?}", dag.get_heads());
         println!("cursor {:?}", cursor1);
-
-        let branch2 = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (8_usize).to_be_bytes().into(), &vec![last_hash.clone()], 0);
-        let cursor2 = dag.add_node(branch2, None).unwrap();
         println!("");
+
+        let (_, cursor2) = dag.insert(8, Some(cursor.clone())).unwrap();
         println!("dag heads {:?}", dag.get_heads());
         println!("cursor {:?}", cursor2);
+        println!("");
 
         let (res1, _)= dag.query(Some(cursor1));
-        println!("");
         println!("result {:?}", res1);
-        assert!(res1.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
+        println!("");
 
         let (res2, _)= dag.query(Some(cursor2));
-        println!("");
         println!("result {:?}", res2);
-        assert!(res2.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
 
+        assert!(res1.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
+        assert!(res2.len() == 1, "The result of the query should be an array with only 1 element(the new node)");
     }
 
     #[test]
-    // when creating branches the heads of the branches should stay in the cursor
-    fn query_cursor_branching() {
-        let mut dag = MerkleDag::<Vec<u8>>::new();
-        let key : Vec<u8> = "".to_string().into();
+    fn cursor_loose_heads() {
+        let mut dag = MerkleDag::<u8>::new();
 
-        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (400_usize).to_be_bytes().into(), &vec![], 0);
-        let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
-        let mut cursor = dag.add_node(node, None).unwrap();
-        assert!(cursor.contains(&last_hashes[0]), 
+        let (node, cursor) = dag.insert(200, None).unwrap();
+        let mut loose = cursor.clone();
+        let mut otherids: Vec<u64> = vec![];
+
+        assert!(cursor.contains(&node.id), 
             "the first cursor should have the first node added");
 
-        for i in 0..10 as usize {
-            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![], 0);
-            let nhash = node.hash.clone();
-            cursor = dag.add_node(node, Some(cursor)).unwrap();
+        for i in 1..11 as usize {
+            let node = Node::new(i as u8,vec![node.id.clone()], None, None);
+            let nid = node.id.clone();
+            loose = dag.insert_node(node, Some(loose)).unwrap();
 
             println!("heads {:?}", dag.get_heads());
-            println!("last {:?}", last_hashes);
-            println!("cursor {:?}", cursor);
 
-            for hash in &last_hashes {
-                assert!(cursor.contains(hash),
-                    "the new cursor should include the old nodes");
-            }
-            assert!(cursor.contains(&nhash), 
+            assert!(loose.contains(&nid), 
                 "the new cursor should include the new node");
 
-            last_hashes.push(nhash);
+            for id in &otherids {
+                assert!(loose.contains(&id), 
+                    "the new cursor should contain the other heads");
+            }
+            otherids.push(nid);
         }
     }
 
     #[test]
     // when adding to existing branches only the head should be there
     fn query_cursor_single_branch() {
-        let mut dag = MerkleDag::<Vec<u8>>::new();
-        let key : Vec<u8> = "".to_string().into();
+        let mut dag = MerkleDag::<u8>::new();
 
-        let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & (0_usize).to_be_bytes().into(), &vec![], 0);
-        let mut last_hashes: Vec<Vec<u8>> = vec![node.hash.clone()];
-        let mut last_hash: Vec<u8> = node.hash.clone();
-        let mut cursor = dag.add_node(node, None).unwrap();
-        assert!(cursor.heads.get(&last_hashes[0]).is_some(), "the first cursor should have the first node added");
+        let (node, mut cursor) = dag.insert(0u8, None).unwrap();
+        assert!(cursor.contains(&node.id), 
+            "the first cursor should have the first node added");
 
-        for i in 0..10 as usize {
-            let node = Node::<Vec<u8>>::new::<Sha3_256>(&key, & i.to_be_bytes().into(), &vec![last_hash], 0);
-            let hash = node.hash.clone();
-            cursor = dag.add_node(node, Some(cursor)).unwrap();
+        for i in 1..11 as usize {
+            (_, cursor) = dag.insert(i as u8, Some(cursor)).unwrap();
 
             println!("heads {:?}", dag.get_heads());
-            println!("last {:?}", last_hashes);
             println!("cursor {:?}", cursor);
 
-            for hash in &last_hashes {
-                assert!(!cursor.contains(hash), "the new cursor should NOT include the old nodes");
-            }
-            assert!(cursor.contains(&hash), "the new cursor should include the new node");
-
-            last_hashes.push(hash.clone());
-            last_hash = hash;
+            assert_eq!(cursor.heads.len(), 1, 
+                "the new cursor should ONLY include the new node");
         }
     }
 }
