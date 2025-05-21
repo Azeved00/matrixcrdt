@@ -22,9 +22,16 @@ use crate::{
     node::Node,
 };
 
+pub struct AuthNode<O>
+  where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
+{
+    node: Node<O>,
+    hash: Hash,
+}
+
 #[derive(Clone)]
 pub struct AuthMerkleDag<D:Digest, O> 
-  where O: Clone, O: hash::Hash, O: Debug, O: Serialize,
+  where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
         D: CoreProxy,
         D::Core: HashMarker + 
             UpdateCore + 
@@ -42,7 +49,7 @@ pub struct AuthMerkleDag<D:Digest, O>
 }
 
 impl<D: Digest, O> AuthMerkleDag<D, O> 
-    where O: Clone, O: hash::Hash, O: Debug, O: Serialize,
+    where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
         D: CoreProxy,
         D::Core: HashMarker + 
             UpdateCore + 
@@ -122,6 +129,23 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
             }
         };
     }
+    pub fn insert_node(&mut self, node:AuthNode<O>, opt_cursor: Option<QueryCursor>) -> io::Result<QueryCursor> {
+        let hash = self.calc_hash(node.node.data.clone(), node.node.parents.clone()).unwrap();
+        if node.hash != hash{
+            return Err(io::Error::new(
+                    io::ErrorKind::Other, 
+                    "Invalid Hash"));
+        }
+
+        return match self.dag.insert_node(node.node.clone(), opt_cursor) {
+            Err(e) => Err(e),
+            Ok(c) => {
+                self.hashes.insert(node.node.id, hash);
+
+                return Ok(c);
+            }
+        };
+    }
 
     /// Verify the authenticated merkle dag
     ///
@@ -190,7 +214,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
 }
 
 impl<D: Digest,O>Debug for AuthMerkleDag<D, O> 
-    where O: Clone, O: hash::Hash, O:Debug, O: Serialize, 
+    where O: Clone, O: hash::Hash, O:Debug, O:PartialEq, O: Serialize, 
         D: CoreProxy,
         D::Core: HashMarker + 
             UpdateCore + 

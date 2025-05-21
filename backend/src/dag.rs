@@ -21,7 +21,7 @@ use crate::QueryCursor;
 /// a partial dag is a dag in which the parents of some nodes are not inside the dag
 #[derive(Clone)]
 pub struct MerkleDag<O>
-  where O: Clone, O: Debug, O:Hash
+  where O: Clone, O: Debug, O:Hash, O:PartialEq
 {
     dag: BTreeMap<u64, Arc<Node<O>>>,
     heads: BTreeMap<u64, Arc<Node<O>>>,
@@ -32,7 +32,7 @@ pub struct MerkleDag<O>
 
 
 impl<O> MerkleDag<O> 
-    where O: Clone, O: Debug, O:Hash
+    where O: Clone, O: Debug, O:Hash, O:PartialEq
 {
     /// Create a new empty graph
     /// This is done by giving a key to perform the hashes
@@ -120,7 +120,7 @@ impl<O> MerkleDag<O>
         return Ok((nrf, cursor));
     }
 
-    fn insert_node(&mut self, node:Node<O>, opt_cursor: Option<QueryCursor>)
+    pub fn insert_node(&mut self, node:Node<O>, opt_cursor: Option<QueryCursor>)
         -> io::Result<QueryCursor>
     {
         let mut cursor = match opt_cursor {
@@ -371,7 +371,7 @@ impl<O> MerkleDag<O>
 
 
 impl<O>Debug for MerkleDag<O> 
-    where O: Clone, O:Debug, O:Hash
+    where O: Clone, O:Debug, O:Hash, O:PartialEq
 {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.debug_struct("Merkle Dag")
