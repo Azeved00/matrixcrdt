@@ -7,7 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 
 #[derive(Clone)]
 pub struct Node<O> 
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     pub parents: Vec<u64>,
     pub data: O,
@@ -17,7 +17,7 @@ pub struct Node<O>
 }
 
 impl<O> Node<O>
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     pub(crate) fn new(data: O, parents: Vec<u64>, olayer: Option<usize>, oindex:Option<usize>) -> Node<O>{
         let mut hasher = DefaultHasher::new();
@@ -36,7 +36,7 @@ impl<O> Node<O>
 }
 
 impl<O> Hash for Node<O> 
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.id);
@@ -44,7 +44,7 @@ impl<O> Hash for Node<O>
 }
 
 impl<O> Debug for Node<O>
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.debug_struct("Node")
@@ -58,14 +58,14 @@ impl<O> Debug for Node<O>
 
 
 impl<O> Ord for Node<O>
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.layer.cmp(&other.layer)
     }
 }
 impl<O> PartialOrd for Node<O> 
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -73,14 +73,22 @@ impl<O> PartialOrd for Node<O>
 }
 
 impl<O> PartialEq for Node<O> 
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+        if self.parents.len() != other.parents.len() {
+            return false;
+        }
+        let mut a_sorted = self.parents.to_vec();
+        let mut b_sorted = other.parents.to_vec();
+        a_sorted.sort_unstable();
+        b_sorted.sort_unstable();
+
+        self.data == other.data && a_sorted == b_sorted
     }
 }
 
 impl<O> std::cmp::Eq for Node<O> 
-    where O:Clone, O:Debug, O:Hash
+    where O:Clone, O:Debug, O:Hash, O:PartialEq
 {}
 
