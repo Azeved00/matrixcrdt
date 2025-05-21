@@ -55,7 +55,7 @@ def make_request(operation, path,counter,  data={}):
     return (end-start) / 1000
 
 
-def gen_workload(id, time):
+def gen_workload(id, number):
     prescriptions = set()
     server_addr=calc_server_addr(id)
     for i in range(0, INITIAL_STATE_SIZE):
@@ -69,7 +69,7 @@ def gen_workload(id, time):
     start_time = timelib.time()
 
     counter=0
-    while timelib.time() - start_time < time:
+    while counter<number:
         op = random.choices(
             population=list(OPERATIONS.keys()),
             weights=[op["prob"] for op in OPERATIONS.values()],
