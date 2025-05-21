@@ -62,13 +62,11 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let mut dag = ctx.dag.write().unwrap();
 #[cfg(feature = "bench")]
             let start = Instant::now();
-
-            let node = dag.gen_node(message.message, Some(ctx.cursor.clone()));
-            let res = dag.add_node(node, Some(ctx.cursor.clone()));
+            let res = dag.insert(message.message, Some(ctx.cursor.clone()));
 #[cfg(feature = "debug")]
             println!("{:?}", dag.len());
             match res {
-                Ok(cursor) => {ctx.cursor = cursor;},
+                Ok((_, cursor)) => {ctx.cursor = cursor;},
                 Err(_err) => {
 #[cfg(feature = "debug")]
                     println!("Error when updating: {}", _err);
