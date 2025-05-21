@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-def plot_graphs(df):
+def plot_graphs(df, place="."):
     # Ensure the elapsed columns are numeric
     df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
@@ -15,7 +15,8 @@ def plot_graphs(df):
     os.makedirs("plots", exist_ok=True)
 
     # Plot for each unique operation_name_script
-    for op_name in df['client_operation'].unique():
+    for op_name_x in df['client_operation'].unique():
+        op_name = op_name_x.strip()
         subset = df[df['client_operation'] == op_name]
 
         backend_time = subset['back_time']
@@ -37,7 +38,7 @@ def plot_graphs(df):
         plt.tight_layout()
         
         # Save each plot
-        plt.savefig(f'plots/{op_name}.png')
+        plt.savefig(f'plots/{place}/{op_name}.png')
         #plt.close()
         #plt.show()
 
@@ -45,4 +46,4 @@ if __name__=="main":
     input_path = sys.argv[1] if len(sys.argv) > 1 else 'input'
     df = pd.read_csv(triple[0])
     plot_graphs(df)
-    #print("Plots saved in 'plots' directory.")
+    print("Plots saved in 'plots' directory.")
