@@ -1,10 +1,11 @@
 LOGS="./logs/macro/authdag"
 CLIENTS=2
-TIME=30
+TIME=60
 
 echo "Starting backend"
-cargo run --manifest-path ./backend/Cargo.toml --bin socket --features bench &
+cargo run --manifest-path ./backend/Cargo.toml --bin baseline --features bench &
 while ! netstat -an | grep LISTEN | grep -q 20076; do
+    echo "couldnt find backend retrying"
     sleep 0.1
 done
 
@@ -17,7 +18,7 @@ for i in $(seq 1 "$CLIENTS"); do
 done
 
 echo "Starting workload scripts"
-python3 ./scripts/workload/main.py "$CLIENTS" "$TIME"
+python3 ./scripts/macro/workload/main.py "$CLIENTS" "$TIME"
 
 jobs -p | xargs kill
 

@@ -37,9 +37,9 @@ def plot_graphs(df):
         plt.tight_layout()
         
         # Save each plot
-        #plt.savefig(f'plots/{op_name}_elapsed_breakdown.png')
+        plt.savefig(f'plots/{op_name}.png')
         #plt.close()
-        plt.show()
+        #plt.show()
 
 if __name__=="main":
     input_path = sys.argv[1] if len(sys.argv) > 1 else 'input'
