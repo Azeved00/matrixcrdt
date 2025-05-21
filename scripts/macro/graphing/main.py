@@ -26,4 +26,4 @@ if __name__ == "__main__":
     else:
         print("CSV passed all validation checks.")
 
-    plot_graphs(merged_df)
+    plot_graphs(merged_df, input_path)
