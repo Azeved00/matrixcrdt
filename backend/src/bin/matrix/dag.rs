@@ -12,16 +12,17 @@ use matrix_sdk::{
     Client
 };
 
-use auth_crdt::{auth::AuthMerkleDag, node::Node, QueryCursor};
+use auth_crdt::{auth::AuthMerkleDag, auth::AuthNode, QueryCursor};
 
-type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, String>>>; 
+type Data = Vec<u8>;
+type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, Data>>>; 
 
 
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "fcup.acrdt.update", kind = MessageLike)]
 struct UpdateEventContent
 {
-    cmd: Node<String>,
+    cmd: AuthNode<Data>,
     author: String,
     version: u8,
 }
@@ -96,11 +97,13 @@ impl AuthDag
 
     /// Send update to other users
     pub async fn send_update(&mut self, cmd: String) {
-        let dag= self.dag.read().await;
-        let node = dag.gen_node(cmd, Some(self.cursor.clone()));
+        let mut dag= self.dag.write().await;
+        let (node,cursor)= dag.insert(cmd.into_bytes(), Some(self.cursor.clone()))
+            .expect("failed to add node to DAG");
+        self.cursor = cursor;
 
         let content = UpdateEventContent {
-            cmd: node,
+            cmd: node.clone(),
             author: self.user.clone(),
             version: Self::VERSION,
         };
@@ -119,7 +122,7 @@ impl AuthDag
     /// if a `log` is provided then the nodes that were updated before 
     /// will **not** be updated again making sure that `f` 
     /// is only called once for each node of the dag
-    pub fn query(&mut self) -> Vec<String>
+    pub fn query(&mut self) -> Vec<Data>
     {
         let (res,cursor) = tokio::task::block_in_place(|| {
             let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -167,5 +170,5 @@ async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference
 
 
     let mut dag = ctx.write().await;
-    let _ = dag.add_node(original.content.cmd.clone(), None);
+    let _ = dag.insert_node(original.content.cmd.clone(), None);
 }

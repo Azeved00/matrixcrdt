@@ -162,7 +162,7 @@ async fn run_server() -> std::io::Result<()>  {
                     dag: Arc::clone(&dag_ref),
                     #[cfg(feature = "bench")]
                     log_file: LogFile::new(Path::new(&format!("log_{:}_{:}.csv", 
-                                addr, chrono::offset::Utc::now()))),
+                                _addr, chrono::offset::Utc::now()))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {

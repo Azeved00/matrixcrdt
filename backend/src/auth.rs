@@ -25,7 +25,7 @@ use crate::{
 pub struct AuthNode<O>
   where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
 {
-    node: Node<O>,
+    node: Arc<Node<O>>,
     hash: Hash,
 }
 
@@ -113,36 +113,46 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     }
 
     /// Insert a new node into the authenticated merkle dag,
-    pub fn insert(&mut self, data:O, opt_cursor: Option<QueryCursor>) -> io::Result<(Arc<Node<O>>, QueryCursor)> {
+    pub fn insert(&mut self, data:O, opt_cursor: Option<QueryCursor>) -> io::Result<(AuthNode<O>, QueryCursor)> {
         let parents = match opt_cursor.clone(){
             None => self.dag.get_heads(),
             Some(cursor) => cursor.heads.into_iter().collect(),
         };
-        let hash = self.calc_hash(data.clone(), parents).unwrap();
+        let hash = self.calc_hash(data.clone(), parents)?;
 
         return match self.dag.insert(data, opt_cursor) {
             Err(e) => Err(e),
             Ok((node, c)) => {
-                self.hashes.insert(node.id, hash);
+                self.hashes.insert(node.id, hash.clone());
+                let anode = AuthNode {
+                    node,
+                    hash,
+                };
 
-                return Ok((node, c));
+                return Ok((anode, c));
             }
         };
     }
-    pub fn insert_node(&mut self, node:AuthNode<O>, opt_cursor: Option<QueryCursor>) -> io::Result<QueryCursor> {
-        let hash = self.calc_hash(node.node.data.clone(), node.node.parents.clone()).unwrap();
-        if node.hash != hash{
+    pub fn insert_node(&mut self, auth_node:AuthNode<O>, opt_cursor: Option<QueryCursor>) -> io::Result<(AuthNode<O>, QueryCursor)> {
+        let node = (*auth_node.node).clone();
+        let hash = self.calc_hash(node.data.clone(), node.parents.clone())?;
+        if auth_node.hash != hash {
             return Err(io::Error::new(
                     io::ErrorKind::Other, 
                     "Invalid Hash"));
         }
 
-        return match self.dag.insert_node(node.node.clone(), opt_cursor) {
+        return match self.dag.insert_node(node.clone(), opt_cursor) {
             Err(e) => Err(e),
-            Ok(c) => {
-                self.hashes.insert(node.node.id, hash);
+            Ok((nref, c)) => {
+                self.hashes.insert(node.id, hash.clone());
 
-                return Ok(c);
+                let anode = AuthNode {
+                    node: nref,
+                    hash,
+                };
+
+                return Ok((anode, c));
             }
         };
     }

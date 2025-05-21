@@ -121,7 +121,7 @@ impl<O> MerkleDag<O>
     }
 
     pub fn insert_node(&mut self, node:Node<O>, opt_cursor: Option<QueryCursor>)
-        -> io::Result<QueryCursor>
+        -> io::Result<(Arc<Node<O>>, QueryCursor)>
     {
         let mut cursor = match opt_cursor {
             None => QueryCursor::new(),
@@ -133,7 +133,9 @@ impl<O> MerkleDag<O>
             let parent = self.dag.get(parent_hash);
             match parent {
                 None => {
-                    return Err(io::Error::new(io::ErrorKind::Other, "Not all parents of the node are in the Dag"));
+                    return Err(io::Error::new(
+                            io::ErrorKind::Other, 
+                            "Not all parents of the node are in the Dag"));
                 }
                 Some(node) => {
                     layer = cmp::max(layer, node.layer);
@@ -156,7 +158,7 @@ impl<O> MerkleDag<O>
         self.heads.insert(nrf.id.clone(), Arc::clone(&nrf));
 
         cursor.heads.insert(nrf.id);
-        return Ok(cursor);
+        return Ok((nrf, cursor));
     }
     
     /// Merge MerkleDag `dag` into `self`
