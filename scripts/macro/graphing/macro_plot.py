@@ -8,10 +8,8 @@ def plot_graphs(df, place="."):
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
     df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')  
 
-    # Fill NaNs with 0 for plotting
     df = df.fillna(0)
 
-    # Create output folder for plots
     os.makedirs("plots", exist_ok=True)
 
     # Plot for each unique operation_name_script
@@ -28,7 +26,6 @@ def plot_graphs(df, place="."):
         
         plt.figure(figsize=(10, 6))
         #plt.bar(indices, extra_time, bottom=backend_time + frontend_time, label='Other Time', color='green')
-        plt.bar(indices, frontend_time, bottom=backend_time , label='Frontend Time', color='orange')
         plt.bar(indices, backend_time, label='Backend Time', color='skyblue')
 
         plt.title(f'Elapsed Time Breakdown - {op_name}')
@@ -41,6 +38,49 @@ def plot_graphs(df, place="."):
         plt.savefig(f'plots/{place}/{op_name}.png')
         #plt.close()
         #plt.show()
+
+def plot_comparisson(df1, df1_name, df2, df2_name, place = "."):
+    # Ensure the elapsed columns are numeric
+    for df in [df1, df2]:
+        df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
+        df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
+        df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')
+        df.fillna(0, inplace=True)
+
+    os.makedirs(f"plots/{place}", exist_ok=True)
+
+    # Get all unique operations from both DataFrames
+    all_operations = set(df1['client_operation'].unique()).union(df2['client_operation'].unique())
+
+    for op_name in all_operations:
+        op_name = op_name.strip()
+
+        subset1 = df1[df1['client_operation'].str.strip() == op_name]
+        subset2 = df2[df2['client_operation'].str.strip() == op_name]
+
+        # Determine the number of records to align the plots
+        max_len = max(len(subset1), len(subset2))
+        indices = range(max_len)
+
+        # Pad the data to make them the same length for plotting
+        back1 = subset1['back_time'].reset_index(drop=True)
+        back2 = subset2['back_time'].reset_index(drop=True)
+
+        back1 = back1.reindex(range(max_len), fill_value=0)
+        back2 = back2.reindex(range(max_len), fill_value=0)
+
+        plt.figure(figsize=(10, 6))
+        plt.bar(indices, back1, label=f'{df1_name} - Backend Time', alpha=0.7, color='skyblue')
+        plt.bar(indices, back2, label=f'{df2_name} - Backend Time', alpha=0.7, color='salmon')
+
+        plt.title(f'Backend Time Comparison - {op_name}')
+        plt.xlabel('Record Index')
+        plt.ylabel('Backend Time')
+        plt.legend()
+        plt.tight_layout()
+
+        plt.savefig(f'plots/{place}/{op_name}.png')
+        plt.close()
 
 if __name__=="main":
     input_path = sys.argv[1] if len(sys.argv) > 1 else 'input'

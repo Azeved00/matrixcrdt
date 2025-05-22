@@ -8,13 +8,14 @@ from macro_plot import plot_graphs
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <path>")
+        print(f"Usage: {sys.argv[0]} <name>")
         sys.exit(1)
 
-    input_path = sys.argv[1]
+    name = sys.argv[1]
+    input_path = "logs/macro/" +  name
     merged_df = merge_files(input_path)
     print(merged_df.head())
-    merged_df.to_csv('final.csv', index=False)
+    merged_df.to_csv(f'{name}_final.csv', index=False)
 
     validation_errors = validate_df(merged_df)
 
@@ -26,4 +27,4 @@ if __name__ == "__main__":
     else:
         print("CSV passed all validation checks.")
 
-    plot_graphs(merged_df, input_path)
+    plot_graphs(merged_df, name)

@@ -1,6 +1,6 @@
 LOGS="./logs/macro/authdag"
 CLIENTS=1
-TIME=60
+OPERATIONS=1000
 
 echo "Starting backend"
 cargo run --manifest-path ./backend/Cargo.toml --bin socket --features bench &
@@ -17,7 +17,7 @@ for i in $(seq 1 "$CLIENTS"); do
 done
 
 echo "Starting workload scripts"
-python3 ./scripts/macro/workload/main.py "$CLIENTS" "$TIME"
+python3 ./scripts/macro/workload/main.py "$CLIENTS" "$OPERATIONS"
 
 jobs -p | xargs kill
 
