@@ -3,7 +3,8 @@ use std::fmt;
 
 pub mod node;
 pub mod dag;
-pub mod auth;
+pub mod auth_node;
+pub mod auth_dag;
 
 pub mod common {
 #[cfg(feature = "bench")]
@@ -14,7 +15,7 @@ pub mod common {
 use std::collections::HashSet;
 
 pub type Hash = Vec<u8>;
-pub type AuthDag = auth::AuthMerkleDag<Sha3_256, Vec<u8>>;
+pub type AuthDag = auth_dag::AuthMerkleDag<Sha3_256, Vec<u8>>;
 
 #[derive(Clone, Default)]
 pub struct QueryCursor {

@@ -1,25 +1,37 @@
-use std::fmt::{Formatter, Debug, Result};
+use std::fmt::{Formatter, Debug, self};
 use std::vec::Vec;
 use std::cmp::{Ord, Ordering};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use serde::{
+    self,
+    Serialize, Deserialize,
+};
 
-
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Node<O> 
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     pub parents: Vec<u64>,
     pub data: O,
-    pub id: u64,
+    #[serde(skip_serializing)]
+    #[serde(default)]
     pub layer: usize,
+
+    #[serde(skip_serializing)]
+    #[serde(default)]
     pub index: usize,
+
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub id: u64,
 }
 
 impl<O> Node<O>
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
-    pub(crate) fn new(data: O, parents: Vec<u64>, olayer: Option<usize>, oindex:Option<usize>) -> Node<O>{
+    pub(crate) fn new(data: O, parents: Vec<u64>,
+        olayer: Option<usize>, oindex:Option<usize>) -> Node<O>{
         let mut hasher = DefaultHasher::new();
         data.hash(&mut hasher);
         parents.hash(&mut hasher);
@@ -36,7 +48,7 @@ impl<O> Node<O>
 }
 
 impl<O> Hash for Node<O> 
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.id);
@@ -44,9 +56,9 @@ impl<O> Hash for Node<O>
 }
 
 impl<O> Debug for Node<O>
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("Node")
             .field("id", &self.id)
             .field("layer", &self.layer)
@@ -58,14 +70,14 @@ impl<O> Debug for Node<O>
 
 
 impl<O> Ord for Node<O>
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.layer.cmp(&other.layer)
     }
 }
 impl<O> PartialOrd for Node<O> 
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -73,7 +85,7 @@ impl<O> PartialOrd for Node<O>
 }
 
 impl<O> PartialEq for Node<O> 
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.parents.len() != other.parents.len() {
@@ -89,6 +101,6 @@ impl<O> PartialEq for Node<O>
 }
 
 impl<O> std::cmp::Eq for Node<O> 
-    where O:Clone, O:Debug, O:Hash, O:PartialEq
+    where O:Clone, O:Debug, O:Hash, O:PartialEq, 
 {}
 

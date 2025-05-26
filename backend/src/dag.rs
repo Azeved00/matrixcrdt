@@ -7,6 +7,7 @@ use std::cmp;
 use std::io;
 use std::sync::Arc;
 use std::hash::Hash;
+use serde::{Serialize, Deserialize};
 
 use crate::node::Node;
 use crate::QueryCursor;
@@ -21,7 +22,8 @@ use crate::QueryCursor;
 /// a partial dag is a dag in which the parents of some nodes are not inside the dag
 #[derive(Clone)]
 pub struct MerkleDag<O>
-  where O: Clone, O: Debug, O:Hash, O:PartialEq
+  where O: Clone, O: Debug, O:Hash, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>
 {
     dag: BTreeMap<u64, Arc<Node<O>>>,
     heads: BTreeMap<u64, Arc<Node<O>>>,
@@ -32,7 +34,8 @@ pub struct MerkleDag<O>
 
 
 impl<O> MerkleDag<O> 
-    where O: Clone, O: Debug, O:Hash, O:PartialEq
+    where O: Clone, O: Debug, O:Hash, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>
 {
     /// Create a new empty graph
     /// This is done by giving a key to perform the hashes
@@ -373,7 +376,8 @@ impl<O> MerkleDag<O>
 
 
 impl<O>Debug for MerkleDag<O> 
-    where O: Clone, O:Debug, O:Hash, O:PartialEq
+    where O: Clone, O:Debug, O:Hash, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>
 {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.debug_struct("Merkle Dag")

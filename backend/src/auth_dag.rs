@@ -13,25 +13,20 @@ use digest::{
     block_buffer::Eager,
     consts::U256,
 };
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use serde_json;
 
 use crate::{
     Hash, QueryCursor,
     dag::MerkleDag,
     node::Node,
+    auth_node::AuthNode,
 };
-
-pub struct AuthNode<O>
-  where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
-{
-    node: Arc<Node<O>>,
-    hash: Hash,
-}
 
 #[derive(Clone)]
 pub struct AuthMerkleDag<D:Digest, O> 
-  where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
+    where O: Clone, O: hash::Hash, O: Debug, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>,
         D: CoreProxy,
         D::Core: HashMarker + 
             UpdateCore + 
@@ -49,7 +44,8 @@ pub struct AuthMerkleDag<D:Digest, O>
 }
 
 impl<D: Digest, O> AuthMerkleDag<D, O> 
-    where O: Clone, O: hash::Hash, O: Debug, O:PartialEq, O: Serialize,
+    where O: Clone, O: hash::Hash, O: Debug, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>,
         D: CoreProxy,
         D::Core: HashMarker + 
             UpdateCore + 
@@ -224,7 +220,8 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
 }
 
 impl<D: Digest,O>Debug for AuthMerkleDag<D, O> 
-    where O: Clone, O: hash::Hash, O:Debug, O:PartialEq, O: Serialize, 
+    where O: Clone, O: hash::Hash, O:Debug, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>,
         D: CoreProxy,
         D::Core: HashMarker + 
             UpdateCore + 
