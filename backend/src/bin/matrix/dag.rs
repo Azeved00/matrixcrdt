@@ -12,7 +12,7 @@ use matrix_sdk::{
     Client
 };
 
-use auth_crdt::{auth::AuthMerkleDag, auth::AuthNode, QueryCursor};
+use auth_crdt::{auth_dag::AuthMerkleDag, auth_node::AuthNode, QueryCursor};
 
 type Data = Vec<u8>;
 type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, Data>>>; 
