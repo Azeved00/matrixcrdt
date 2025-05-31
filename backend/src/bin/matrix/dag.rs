@@ -27,12 +27,12 @@ struct UpdateEventContent
     version: u8,
 }
 
+#[derive(Clone)]
 pub struct AuthMatrixDag
 {
     room: Room,
     user: String,
     dag: DagReference,
-    cursor: QueryCursor,
 }
 
 /// Authenticated Dag type,
@@ -92,7 +92,6 @@ impl AuthMatrixDag
             room,
             user: username.to_string(),
             dag: context,
-            cursor: QueryCursor::default(),
         }
     }
 

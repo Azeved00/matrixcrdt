@@ -2,7 +2,6 @@ use std::net::{TcpListener, TcpStream};
 #[cfg(feature = "debug")]
 use std::net::SocketAddr;
 use std::io::{Read, Write};
-use std::sync::{Arc, RwLock};
 #[cfg(feature = "bench")]
 use std::time::Instant;
 use std::cmp;
@@ -20,7 +19,7 @@ use crate::dag::AuthMatrixDag;
 
 struct Context {
     pub clock: u64,
-    pub dag: Arc<RwLock<AuthMatrixDag>>,
+    pub dag: AuthMatrixDag,
 #[cfg(feature = "debug")]
     pub addr: SocketAddr,
 #[cfg(feature = "bench")]
@@ -63,13 +62,12 @@ async fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
 async fn process_message(ctx: &mut Context, message: Message) -> Message {
     match message.get_command() {
         Command::Update => {
-            let mut dag = ctx.dag.write().unwrap();
 #[cfg(feature = "bench")]
             let start = Instant::now();
-            let res = dag.send_update(message.message, Some(ctx.cursor.clone()))
+            let res = ctx.dag.send_update(message.message, Some(ctx.cursor.clone()))
                 .await;
 #[cfg(feature = "debug")]
-            println!("{:?}", dag.len());
+            println!("{:?}", ctx.dag.len());
             match res {
                 Ok(cursor) => {ctx.cursor = cursor;},
                 Err(_err) => {
@@ -90,8 +88,6 @@ async fn process_message(ctx: &mut Context, message: Message) -> Message {
             Message::new(Command::Acknowledge, ctx.clock)
         }
         Command::StatefulQuery => {
-            let dag = ctx.dag.read().unwrap();
-
 #[cfg(feature = "bench")]
             let start = Instant::now();
 #[cfg(feature = "debug")]
@@ -99,9 +95,9 @@ async fn process_message(ctx: &mut Context, message: Message) -> Message {
 #[cfg(feature = "debug")]
             println!("{:?}", ctx.cursor);
 #[cfg(feature = "debug")]
-            println!("{:?}", dag.get_dag().get_heads());
+            println!("{:?}", ctx.dag.get_dag().get_heads());
 
-            let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
+            let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
@@ -116,13 +112,12 @@ async fn process_message(ctx: &mut Context, message: Message) -> Message {
             ret 
         }
         Command::StatelessQuery => {
-            let dag = ctx.dag.read().unwrap();
 #[cfg(feature = "debug")]
             println!("stateless query");
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
-            let (change_array, cursor) = dag.query(None);
+            let (change_array, cursor) = ctx.dag.query(None);
             ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
@@ -164,7 +159,6 @@ async fn run_server() -> std::io::Result<()>{
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
     let dag = AuthMatrixDag::new("Random username go", "My super secret Key").await;
-    let dag_ref = Arc::new(RwLock::new(dag));
 
     loop {
         match listener.accept() {
@@ -177,7 +171,7 @@ async fn run_server() -> std::io::Result<()>{
                 println!("new client: {_addr:?}");
                 let ctx = Context {
                     clock: 0,
-                    dag: Arc::clone(&dag_ref),
+                    dag: dag.clone(),
 #[cfg(feature = "debug")]
                     addr: _addr,
 #[cfg(feature = "bench")]

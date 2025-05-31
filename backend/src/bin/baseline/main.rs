@@ -141,7 +141,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn run_server() -> std::io::Result<()>  {
+fn run_server() -> std::io::Result<()>  {
     let listener = TcpListener::bind("127.0.0.1:20076")?;
     println!("WebSocket Server running on ws://127.0.0.1:20076");
     let dag = MerkleDag::<Vec<u8>>::new();
@@ -160,9 +160,9 @@ async fn run_server() -> std::io::Result<()>  {
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
-                    #[cfg(feature = "bench")]
-                    log_file: LogFile::new(Path::new(&format!("log_{:}_{:}.csv", 
-                                _addr, chrono::offset::Utc::now()))),
+#[cfg(feature = "bench")]
+                    log_file: LogFile::new(std::path::Path::new(
+                            &format!("backend/log_{:}.csv", _addr.port()))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {
