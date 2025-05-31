@@ -18,7 +18,7 @@ type Data = Vec<u8>;
 type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, Data>>>; 
 
 
-#[derive(Clone, Deserialize, Serialize, EventContent)]
+#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
 #[ruma_event(type = "fcup.acrdt.update", kind = MessageLike)]
 struct UpdateEventContent
 {
@@ -27,7 +27,7 @@ struct UpdateEventContent
     version: u8,
 }
 
-pub struct AuthMatrixDag
+pub struct AuthDag
 {
     room: Room,
     user: String,
@@ -40,11 +40,10 @@ pub struct AuthMatrixDag
 /// uses a set, public room to send and receive the updates
 /// will filter the updates signed by authenticated users from other updates
 ///
-/// To use this type you should create (using [`AuthMatrixDag::new()`]),
-/// start the sync process (with [`AuthMatrixDag::start_sync()`]), 
-/// then you can query the dag [`AuthMatrixDag::query()`] and
-/// send updates to other users [`AuthMatrixDag::send_update()`]
-impl AuthMatrixDag
+/// To use this type you should create (using [`AuthDag::new()`]),
+/// start the sync process (with [`AuthDag::start_sync()`]), 
+/// then you can query the dag [`AuthDag::query()`] and send updates to other users [`AuthDag::send_update()`]
+impl AuthDag
 {
     const ROOM_ID : &str = "!GXNPdYSjbFRDdXdyRK:matrix.org";
     const HOMESERVER : &str = "https://matrix.org";
@@ -97,12 +96,11 @@ impl AuthMatrixDag
     }
 
     /// Send update to other users
-    pub async fn send_update(&mut self, cmd: Data, c: Option<QueryCursor>) 
-        -> std::io::Result<QueryCursor> 
-    {
+    pub async fn send_update(&mut self, cmd: String) {
         let mut dag= self.dag.write().await;
-        let (node,cursor)= dag.insert(cmd,c)
+        let (node,cursor)= dag.insert(cmd.into_bytes(), Some(self.cursor.clone()))
             .expect("failed to add node to DAG");
+        self.cursor = cursor;
 
         let content = UpdateEventContent {
             cmd: node.clone(),
@@ -114,7 +112,6 @@ impl AuthMatrixDag
         if result.is_err() {
             panic!("An error occurred: {:?}", result.unwrap_err());
         }
-        return Ok(cursor)
     }
 
     /// Query the Dag,
@@ -125,17 +122,18 @@ impl AuthMatrixDag
     /// if a `log` is provided then the nodes that were updated before 
     /// will **not** be updated again making sure that `f` 
     /// is only called once for each node of the dag
-    pub fn query(&self, cursor: Option<QueryCursor>) -> (Vec<Data>, QueryCursor)
+    pub fn query(&mut self) -> Vec<Data>
     {
         let (res,cursor) = tokio::task::block_in_place(|| {
             let runtime = tokio::runtime::Runtime::new().unwrap();
 
             runtime.block_on(async {
                 let map = self.dag.read().await;
-                map.query(cursor.clone())
+                map.query(Some(self.cursor.clone()))
             })
         });
-        return (res, cursor)
+        self.cursor = cursor;
+        return res
     }
 
     /// Pretty print function for a HashMap
@@ -166,9 +164,10 @@ async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference
     
     let original = event.as_original()
         .expect("Cant get the original of received event");
-    if original.content.version != AuthMatrixDag::VERSION {
+    if original.content.version != AuthDag::VERSION {
         return
     }
+
 
     let mut dag = ctx.write().await;
     let _ = dag.insert_node(original.content.cmd.clone(), None);
