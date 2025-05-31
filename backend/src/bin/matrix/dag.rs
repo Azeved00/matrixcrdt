@@ -7,9 +7,13 @@ use matrix_sdk::{
     config::SyncSettings,
     event_handler::Ctx,
     ruma::events::macros::EventContent,
-    ruma::RoomId,
     Room,  RoomState,
-    Client
+    Client,
+    ruma::api::client::room::Visibility,
+    ruma::api::client::room::create_room::v3::{
+        RoomPreset,
+        Request as CreateRoomRequest,
+    }
 };
 
 use auth_crdt::{auth_dag::AuthMerkleDag, auth_node::AuthNode, QueryCursor};
@@ -46,9 +50,8 @@ pub struct AuthMatrixDag
 /// send updates to other users [`AuthMatrixDag::send_update()`]
 impl AuthMatrixDag
 {
-    const ROOM_ID : &str = "!GXNPdYSjbFRDdXdyRK:matrix.org";
     const HOMESERVER : &str = "https://matrix.org";
-    const VERSION: u8 = 3;
+    const VERSION: u8 = 4;
 
     /// create a new Authenticated Dag,
     /// you need to pass matrix's credentials as parameters
@@ -73,20 +76,25 @@ impl AuthMatrixDag
         client.add_event_handler_context(Arc::clone(&context));
         client.add_event_handler(self::map_on_update);
 
-        println!("Start Syncing");
+        println!("Initial Sync Step");
         let response = client.sync_once(Default::default()).await.unwrap();
-
-        let oroom_id = RoomId::parse(Self::ROOM_ID).expect("failed to parse room id");
-        let room = client.get_room(&oroom_id).expect("Room not found"); 
-
         let settings = SyncSettings::default()
             .token(response.next_batch.clone());
 
+        println!("Create Room");
+        let mut request = CreateRoomRequest::new();
+        request.name= Some("My Benchmark Room".into());
+        request.topic= Some("Room for benchmarking tests".into());
+        request.preset= Some(RoomPreset::PublicChat);
+        request.is_direct= false;
+        request.visibility= Visibility::Public;
+
+        let room = client.create_room(request).await.unwrap();
+
+        println!("Start Syncing Thread");
         tokio::spawn(async move {
             let _ = client.sync(settings.clone()).await;
         });
-
-
 
         Self {
             room,

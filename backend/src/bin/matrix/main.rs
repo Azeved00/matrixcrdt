@@ -160,6 +160,8 @@ async fn run_server() -> std::io::Result<()>{
     println!("WebSocket Server running on ws://127.0.0.1:20076");
     let dag = AuthMatrixDag::new("Random username go", "My super secret Key").await;
 
+
+
     loop {
         match listener.accept() {
             Err(e) => {
