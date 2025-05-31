@@ -1,6 +1,6 @@
 LOGS="./logs/macro/authdag"
-CLIENTS=1
-OPERATIONS=500
+CLIENTS=2
+OPERATIONS=250
 
 echo "Starting backend"
 cargo run --manifest-path ./backend/Cargo.toml --bin socket --features bench &

@@ -13,7 +13,6 @@ def log_step(client_id, msg):
 def gen_client_workload(id, time_limit):
     log_step(id, "starting workload")
     gen_workload(id, time_limit)
-    log_step(id, "done")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

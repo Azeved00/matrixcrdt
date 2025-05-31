@@ -3,6 +3,7 @@ from stats import *
 from numpy import random as nprandom
 import time as timelib
 import requests
+from tqdm import tqdm
 
 
 def zipf(max_value, a=1.5):
@@ -56,6 +57,7 @@ def make_request(operation, path,counter,  data={}):
 
 
 def gen_workload(id, number):
+    bar = tqdm(total=number, desc=f"Thread {id}", position=id, leave=True)
     prescriptions = set()
     server_addr=calc_server_addr(id)
     for i in range(0, INITIAL_STATE_SIZE):
@@ -158,4 +160,6 @@ def gen_workload(id, number):
         #print(i, " " ,log)
         log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed}\n")
         counter+=1
+        bar.update(1)
+    bar.close()
 

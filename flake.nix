@@ -20,11 +20,6 @@
 
                 buildInputs = with pkgs; [
                     cargo rustc
-                    rust-analyzer
-                    typescript-language-server
-                    (python3.withPackages (pp: with pp;[
-                        python-lsp-server
-                    ]))
                 ];
 
                 shellHook = ''
@@ -75,6 +70,7 @@
                     (python3.withPackages (pp: with pp;[
                         numpy
                         requests
+                        tqdm
                     ]))
                 ];
 
