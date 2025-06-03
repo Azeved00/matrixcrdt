@@ -13,7 +13,6 @@ def log_step(client_id, msg):
 def gen_client_workload(id, time_limit):
     log_step(id, "starting workload")
     gen_workload(id, time_limit)
-    log_step(id, "done")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -22,7 +21,7 @@ if __name__ == "__main__":
 
     try:
         clients = int(sys.argv[1])
-        time_limit= int(sys.argv[2])
+        op_num = int(sys.argv[2])
         threads = []
 
         log_step(0, "Generating initial state")
@@ -37,7 +36,7 @@ if __name__ == "__main__":
 
         for i in range(0, clients):
             thread = threading.Thread(target=gen_client_workload,
-                                      args=(i, time_limit))
+                                      args=(i, op_num))
             thread.start()
             threads.append(thread)
 

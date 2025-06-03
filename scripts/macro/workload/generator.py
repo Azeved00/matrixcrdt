@@ -3,6 +3,7 @@ from stats import *
 from numpy import random as nprandom
 import time as timelib
 import requests
+from tqdm import tqdm
 
 
 def zipf(max_value, a=1.5):
@@ -34,11 +35,13 @@ def make_request(operation, path,counter,  data={}):
     headers = {}
     headers['request-id'] = f"{counter}"
 
+    start = timelib.time_ns()
     match OPERATIONS[operation]["req"]:
             case "get":
                 response = requests.get(path, headers=headers)
             case "post":
                 response = requests.post(path, json=data, headers=headers)
+    end = timelib.time_ns()
     
     #print(response.json())
 
@@ -50,10 +53,11 @@ def make_request(operation, path,counter,  data={}):
 
         raise Exception(f"HTTP {response.status_code}: {error_message}")
 
-    return response.elapsed
+    return (end-start) / 1000
 
 
-def gen_workload(id, time):
+def gen_workload(id, number):
+    bar = tqdm(total=number, desc=f"Thread {id}", position=id, leave=True)
     prescriptions = set()
     server_addr=calc_server_addr(id)
     for i in range(0, INITIAL_STATE_SIZE):
@@ -67,7 +71,7 @@ def gen_workload(id, time):
     start_time = timelib.time()
 
     counter=0
-    while timelib.time() - start_time < time:
+    while counter<number:
         op = random.choices(
             population=list(OPERATIONS.keys()),
             weights=[op["prob"] for op in OPERATIONS.values()],
@@ -154,6 +158,8 @@ def gen_workload(id, time):
 
 
         #print(i, " " ,log)
-        log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed.microseconds}\n")
+        log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed}\n")
         counter+=1
+        bar.update(1)
+    bar.close()
 
