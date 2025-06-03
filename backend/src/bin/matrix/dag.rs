@@ -50,7 +50,7 @@ pub struct AuthMatrixDag
 /// send updates to other users [`AuthMatrixDag::send_update()`]
 impl AuthMatrixDag
 {
-    const HOMESERVER : &str = "https://matrix.org";
+    const HOMESERVER : &str = "http://localhost:8008";
     const VERSION: u8 = 4;
 
     /// create a new Authenticated Dag,
@@ -81,7 +81,7 @@ impl AuthMatrixDag
         let settings = SyncSettings::default()
             .token(response.next_batch.clone());
 
-        println!("Create Room");
+        println!("Creating Public Room");
         let mut request = CreateRoomRequest::new();
         request.name= Some("My Benchmark Room".into());
         request.topic= Some("Room for benchmarking tests".into());
