@@ -1,8 +1,8 @@
 use log::error;
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
-use std::collections::BTreeMap;
 use std::collections::{HashMap, BinaryHeap, VecDeque};
+use dashmap::DashMap;
 use std::cmp;
 use std::io;
 use std::sync::Arc;
@@ -25,8 +25,8 @@ pub struct MerkleDag<O>
   where O: Clone, O: Debug, O:Hash, O:PartialEq,
           O:Serialize, O:for<'de> Deserialize<'de>
 {
-    dag: BTreeMap<u64, Arc<Node<O>>>,
-    heads: BTreeMap<u64, Arc<Node<O>>>,
+    dag: DashMap<u64, Arc<Node<O>>>,
+    heads: DashMap<u64, Arc<Node<O>>>,
     topo: Vec<Arc<Node<O>>>,
     partial: bool,
     top_layer: usize,
@@ -41,10 +41,10 @@ impl<O> MerkleDag<O>
     /// This is done by giving a key to perform the hashes
     pub fn new() -> Self {
         Self{ 
-            dag: BTreeMap::new(), 
+            dag: DashMap::new(), 
             partial: false,
             top_layer: 0,
-            heads: BTreeMap::new(), 
+            heads: DashMap::new(), 
             topo: Vec::new(),
         }
     }
@@ -61,13 +61,19 @@ impl<O> MerkleDag<O>
         return self.top_layer;
     }
 
-    pub(crate) fn get_node(&self, id: &u64) -> Option<&Arc<Node<O>>> {
-        self.dag.get(id)
+    pub(crate) fn get_node(&self, id: &u64) -> Option<Arc<Node<O>>> {
+        match self.dag.get(id){
+            Some(x) => {
+                let n:Arc<Node<O>> = (*x.value()).clone();
+                Some(n)
+            },
+            None => None
+        }
     }
 
     /// get the head nodes of the dag
     pub fn get_heads(&self) -> Vec<u64> {
-        return self.heads.keys().cloned().collect();
+        return self.heads.iter().map(|r| r.key().clone()).collect();
     }
 
     //------------------------- SPEC IMPLEMENTATION -----------------------------
@@ -222,14 +228,17 @@ impl<O> MerkleDag<O>
         let mut indegree = HashMap::new();
         let mut queue = VecDeque::new();
 
-        for (_, node) in &self.dag {
+        for pair in &self.dag {
+            let (_, node) = pair.pair();
             indegree.entry(node.id.clone()).or_insert(0);
             for parent_hash in &node.parents {
                 *indegree.entry(parent_hash.clone()).or_insert(0) += 1;
             }
         }
 
-        for (hash, node) in &self.dag {
+        for pair in &self.dag {
+            let (hash, node) = pair.pair();
+
             if let Some(0) = indegree.get(hash) {
                 queue.push_back(node.clone());
             }
@@ -327,17 +336,18 @@ impl<O> MerkleDag<O>
             Some(cursor) => cursor,
             None => QueryCursor::new()
         };
-        let mut heap = BinaryHeap::<&Node<O>>::new();
+        let mut heap = BinaryHeap::<Arc<Node<O>>>::new();
         let size = self.topo.len() - cursor.index;
         let mut vis :Vec<bool> = vec![false; size.try_into().unwrap()];
         let mut res = Vec::<O>::new();
 
-        for (_, node) in &self.heads {
+        for pair in &self.heads {
+            let (_, node) = pair.pair();
             if node.index < cursor.index {
                 continue
             }
 
-            heap.push(node);
+            heap.push((*node).clone());
         }
 
         for head_hash in &cursor.heads{
@@ -423,7 +433,7 @@ mod tests {
 
         for i in 0..10 as usize {
             let node = Node::new(i as u8, vec![], None, None);
-            c = dag.insert_node(node, Some(c)).unwrap();
+            (_, c) = dag.insert_node(node, Some(c)).unwrap();
             assert_eq!(c.heads.len(), i+1, 
                 "the cursor should include all heads of the dag");
         }
@@ -497,7 +507,7 @@ mod tests {
         for i in 1..11 as usize {
             let node = Node::new(i as u8,vec![node.id.clone()], None, None);
             let nid = node.id.clone();
-            loose = dag.insert_node(node, Some(loose)).unwrap();
+            (_, loose) = dag.insert_node(node, Some(loose)).unwrap();
 
             println!("heads {:?}", dag.get_heads());
 

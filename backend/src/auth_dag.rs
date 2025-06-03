@@ -68,8 +68,18 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     /// Get the node from the dag with the specified Hash
     ///
     /// if there is no node with the given hash, `None` is returned
-    fn get_node(&self, id: &u64) -> Option<&Arc<Node<O>>> {
+    fn get_node(&self, id: &u64) -> Option<Arc<Node<O>>> {
         self.dag.get_node(id)
+    }
+
+    fn get_auth_node(&self, id: &u64) -> Option<AuthNode<O>> {
+        match self.dag.get_node(id) {
+            Some(node) => Some(AuthNode {
+                node,
+                hash: self.hashes.get(id).unwrap().clone(),
+            }),
+            None => None
+        }
     }
     
     pub fn calc_hash(&self, data:O, parents:Vec<u64>) -> io::Result<Vec<u8>> {
@@ -255,7 +265,7 @@ mod tests {
     #[test]
     fn generation_insertion() {
         let password : Vec<u8> = "random password".to_string().into();
-        let mut dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password);
+        let dag = AuthMerkleDag::<Sha3_256,Vec<u8>>::new(password);
         
 
         //assert!(res.is_err(), "Insertion should fail if node has incorrect hash");
