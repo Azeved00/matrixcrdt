@@ -7,11 +7,14 @@ use serde::{
     self,
     Serialize, Deserialize,
 };
+use serde_with::{serde_as, DisplayFromStr};
 
+#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Node<O> 
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
+    #[serde_as(as = "Vec<DisplayFromStr>")]
     pub parents: Vec<u64>,
     pub data: O,
     #[serde(skip_serializing)]
