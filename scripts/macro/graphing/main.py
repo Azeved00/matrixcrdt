@@ -19,7 +19,7 @@ if __name__ == "__main__":
         name = args[0]
         input_path = "logs/macro/" +  name + "/"
         df1 = merge_files(input_path)
-        print(df1.head())
+        print(df1)
 
         validation_errors = validate_df(df1)
 

@@ -11,27 +11,33 @@ def plot_graphs(df, place="."):
 
     df = df.fillna(0)
 
-    os.makedirs("plots", exist_ok=True)
+    os.makedirs(f"plots/{place}", exist_ok=True)
 
     # Plot for each unique operation_name_script
     for op_name_x in df['client_operation'].unique():
         op_name = op_name_x.strip()
-        subset = df[df['client_operation'] == op_name]
+        if op_name == "":
+            continue
 
-        backend_time = subset['back_time']
-        frontend_time = subset['front_time']
-        total_time = subset['total_time']
-        extra_time =  total_time - frontend_time - backend_time
+        subset = df[df['client_operation'].str.strip() == op_name]
 
-        indices = range(len(subset))
+        back = subset['back_time']
+        front = subset['front_time']
+
+        front = [a + b for a, b in zip(front, back)]
         
         plt.figure(figsize=(10, 6))
-        #plt.bar(indices, extra_time, bottom=backend_time + frontend_time, label='Other Time', color='green')
-        plt.bar(indices, backend_time, label='Backend Time', color='skyblue')
+        plt.plot(range(len(back)), back, marker="o", 
+                 label=f'Backend Time', 
+                 alpha=0.7, color='skyblue')
 
-        plt.title(f'Elapsed Time Breakdown - {op_name}')
-        plt.xlabel('Record Index')
-        plt.ylabel('Time')
+        plt.plot(range(len(front)), front, marker="o",
+                 label=f'Frontend Time',
+                 alpha=0.7, color='deepskyblue')
+
+        #plt.title(f'Elapsed Time Breakdown - {op_name}')
+        plt.xlabel('System Time')
+        plt.ylabel('Request Time')
         plt.legend()
         plt.tight_layout()
         
