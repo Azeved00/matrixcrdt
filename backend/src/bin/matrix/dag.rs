@@ -64,8 +64,8 @@ impl AuthMatrixDag
 
         client
             .matrix_auth()
-            .login_username(username, password)
-            .initial_device_display_name("getting started bot")
+            .login_username("alice", "test123")
+            .initial_device_display_name("bot")
             .await.expect("authenticated failed");
 
         println!("logged in as {username}");

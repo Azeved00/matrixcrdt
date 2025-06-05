@@ -1,5 +1,4 @@
 use std::net::{TcpListener, TcpStream};
-#[cfg(feature = "debug")]
 use std::net::SocketAddr;
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
@@ -12,12 +11,13 @@ use auth_crdt::{AuthDag, QueryCursor};
 #[cfg(feature = "bench")]
 use auth_crdt::common::logger::LogFile;
 use auth_crdt::common::message::{Message, Command}; 
+use tracing_subscriber::filter::EnvFilter;
+use tracing::{info, error, info_span};
 
 
 struct Context {
     pub clock: u64,
     pub dag: Arc<RwLock<AuthDag>>,
-#[cfg(feature = "debug")]
     pub addr: SocketAddr,
 #[cfg(feature = "bench")]
     pub log_file: LogFile,
@@ -39,16 +39,18 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
 
         let mut buffer = vec![0;  msg.length as usize];
         if stream.read_exact(&mut buffer).is_err() {
-            println!("Failed to read message.");
+            error!("Failed to read message.");
             break;
         }
         msg.message = buffer;
-#[cfg(feature = "debug")]
-        println!("{:} Received: {:?}",ctx.addr.port() ,msg);
+        let span = info_span!("Message", port = %ctx.addr.port(), clock=%msg.clock);
+        let _enter = span.enter();
+
+        info!("Received: {:?}",msg);
 
         let answer = process_message(&mut ctx, msg);
-#[cfg(feature = "debug")]
-        println!("{:} Answered: {:?}",ctx.addr.port(), answer);
+
+        info!("Answered: {:?}", answer);
         let ser_answer = answer.to_bytes();
 
         stream.write_all(&ser_answer).unwrap();
@@ -63,19 +65,17 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 #[cfg(feature = "bench")]
             let start = Instant::now();
             let res = dag.insert(message.message, Some(ctx.cursor.clone()));
-#[cfg(feature = "debug")]
-            println!("{:?}", dag.len());
+            info!("Dag Length: {:?}", dag.len());
+
             match res {
                 Ok((_, cursor)) => {ctx.cursor = cursor;},
                 Err(_err) => {
-#[cfg(feature = "debug")]
-                    println!("Error when updating: {}", _err);
+                    error!("Error when updating: {}", _err);
                     return Message::new(Command::Error, ctx.clock);
                 }
             };
 
-#[cfg(feature = "debug")]
-            println!("{:?}", ctx.cursor);
+            info!("Cursor {:?}", ctx.cursor);
 
 #[cfg(feature = "bench")]
             let time = start.elapsed();
@@ -89,14 +89,12 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 
 #[cfg(feature = "bench")]
             let start = Instant::now();
-#[cfg(feature = "debug")]
-            println!("stateful query");
-#[cfg(feature = "debug")]
-            println!("{:?}", ctx.cursor);
-#[cfg(feature = "debug")]
-            println!("{:?}", dag.get_dag().get_heads());
+            info!("Cursor {:?}", ctx.cursor);
+            info!("Heads: {:?}", dag.get_dag().get_heads());
 
             let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
+
+            info!("Changes: {:?}", change_array.len());
             ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
@@ -112,9 +110,6 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
         }
         Command::StatelessQuery => {
             let dag = ctx.dag.read().unwrap();
-#[cfg(feature = "debug")]
-            println!("stateless query");
-
 #[cfg(feature = "bench")]
             let start = Instant::now();
             let (change_array, cursor) = dag.query(None);
@@ -157,9 +152,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_server() -> std::io::Result<()>{
     let listener = TcpListener::bind("127.0.0.1:20076")?;
-    println!("WebSocket Server running on ws://127.0.0.1:20076");
+
+    info!("WebSocket Server running on ws://127.0.0.1:20076");
     let dag = AuthDag::new("My super secret Key".to_string().into());
     let dag_ref = Arc::new(RwLock::new(dag));
+
+    tracing_subscriber::fmt()
+        //.compact()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_target(false)
+        .with_thread_ids(false)
+        .with_thread_names(false)
+        .with_level(true)
+        .init();
 
     loop {
         match listener.accept() {
@@ -167,16 +172,14 @@ fn run_server() -> std::io::Result<()>{
                 println!("couldn't get client: {e:?}");
                 return Err(e);
             },
-            Ok((socket, _addr)) => {
-#[cfg(feature = "debug")]
-                println!("new client: {_addr:?}");
+            Ok((socket, addr)) => {
+                info!("new client: {addr:?}");
                 let ctx = Context {
                     clock: 0,
                     dag: Arc::clone(&dag_ref),
-#[cfg(feature = "debug")]
-                    addr: _addr,
+                    addr,
 #[cfg(feature = "bench")]
-                    log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", _addr.port()))),
+                    log_file: LogFile::new(std::path::Path::new(&format!("backend/log_{:}.csv", addr.port()))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {

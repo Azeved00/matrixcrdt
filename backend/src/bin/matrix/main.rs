@@ -47,7 +47,7 @@ async fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
         }
         msg.message = buffer;
 #[cfg(feature = "debug")]
-        println!("{:} Received: {:?}",ctx.addr.port() ,msg);
+        println!("{:} Received: {:?}",ctx.addr.port(),msg);
 
         let answer = process_message(&mut ctx, msg).await;
 #[cfg(feature = "debug")]
@@ -67,7 +67,8 @@ async fn process_message(ctx: &mut Context, message: Message) -> Message {
             let res = ctx.dag.send_update(message.message, Some(ctx.cursor.clone()))
                 .await;
 #[cfg(feature = "debug")]
-            println!("{:?}", ctx.dag.len());
+            println!("Sending update");
+            
             match res {
                 Ok(cursor) => {ctx.cursor = cursor;},
                 Err(_err) => {
@@ -94,8 +95,6 @@ async fn process_message(ctx: &mut Context, message: Message) -> Message {
             println!("stateful query");
 #[cfg(feature = "debug")]
             println!("{:?}", ctx.cursor);
-#[cfg(feature = "debug")]
-            println!("{:?}", ctx.dag.get_dag().get_heads());
 
             let (change_array, cursor) = ctx.dag.query(Some(ctx.cursor.clone()));
             ctx.cursor = cursor;
@@ -157,10 +156,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run_server() -> std::io::Result<()>{
     let listener = TcpListener::bind("127.0.0.1:20076")?;
+#[cfg(feature = "debug")]
     println!("WebSocket Server running on ws://127.0.0.1:20076");
-    let dag = AuthMatrixDag::new("Random username go", "My super secret Key").await;
-
-
+    let dag = AuthMatrixDag::new("alice", "test123").await;
 
     loop {
         match listener.accept() {

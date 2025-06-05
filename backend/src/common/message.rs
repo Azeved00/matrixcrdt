@@ -1,6 +1,7 @@
 use std::vec::Vec;
 use std::fmt;
 
+#[derive(Debug, Copy, Clone)]
 pub enum Command {
     Acknowledge=0,
     Error = 1,
@@ -21,6 +22,19 @@ impl Command{
             4 => Command::StatelessQuery,
             _ => Command::Unknown
         }
+    }
+}
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            Command::Acknowledge => "Acknowledge",
+            Command::Error => "Error",
+            Command::Update => "Update",
+            Command::StatefulQuery => "StatefulQuery",
+            Command::StatelessQuery => "StatelessQuery",
+            Command::Unknown => "Unknown",
+        };
+        write!(f, "{}", name)
     }
 }
 
@@ -93,7 +107,7 @@ impl Message {
     }
 
     pub fn get_command(&self) -> Command {
-        Command::from_u8(self.command)
+        Command::from_u8(self.command.clone())
     }
 }
 
@@ -107,7 +121,8 @@ impl fmt::Debug for Message {
 
         write!(
             f,
-            "Message {{ command: {}, clock: {}, length: {}, message: {:?} }}",
+            "Message {{ command: {}({}), clock: {}, length: {}, message: {:?} }}",
+            Command::from_u8(self.command.clone()), 
             self.command,
             self.clock,
             self.length,

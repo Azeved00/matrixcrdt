@@ -3,6 +3,7 @@ from stats import *
 from numpy import random as nprandom
 import time as timelib
 import requests
+import sys
 from tqdm import tqdm
 
 
@@ -19,10 +20,14 @@ def select_doctor():
     return zipf(DOCTORS, 3)
 
 def select_medication():
-    number = nprandom.poisson(lam=2)
-    meds = set()
-    for _ in range(number):
-        meds.add(zipf(MEDICINE, 1.1))
+    first_med = random.randint(0, MEDICINE - 1)
+    meds = {first_med}
+
+    additional_count = nprandom.poisson(lam=2)
+    while len(meds) < additional_count + 1:
+        med = zipf(MEDICINE, 1.1)
+        meds.add(med)
+
     return ",".join(str(med) for med in meds)
 
 def select_patient():
@@ -55,29 +60,13 @@ def make_request(operation, path,counter,  data={}):
 
     return (end-start) / 1000
 
-
-def gen_workload(id, number):
-    bar = tqdm(total=number, desc=f"Thread {id}", position=id, leave=True)
-    prescriptions = set()
+def make_prescription_state(initial_size=10, id=0):
+    prescriptions = set(99_000_000 + i for i in range(initial_size))
+    prescription_id = initial_size
     server_addr=calc_server_addr(id)
-    for i in range(0, INITIAL_STATE_SIZE):
-        prescriptions.add(99_000_000+i)
-    prescription_id = INITIAL_STATE_SIZE
-    
-    log = open(f"log_{id+1}.csv", 'w')
-    log.write("id,operation_name,elapsed\n")
 
-    #print(f"{clients}")
-    start_time = timelib.time()
-
-    counter=0
-    while counter<number:
-        op = random.choices(
-            population=list(OPERATIONS.keys()),
-            weights=[op["prob"] for op in OPERATIONS.values()],
-            k=1
-        )[0]
-
+    def match_operation(op, counter):
+        nonlocal prescription_id
         elapsed = -1
         match OPERATIONS[op]["name"]:
             case "get_pharmacy_prescriptions":
@@ -155,7 +144,29 @@ def gen_workload(id, number):
                 presc = select_prescription(prescriptions)
                 path = OPERATIONS[op]["path"].format(prescription=presc)
                 elapsed = make_request(op, server_addr+ path, counter)
+        return elapsed
 
+    return match_operation
+
+def gen_workload(id, number):
+    bar = tqdm(total=number, desc=f"Thread {id}", position=id, leave=True)
+    
+    log = open(f"log_{id+1}.csv", 'w')
+    log.write("id,operation_name,elapsed\n")
+
+    #print(f"{clients}")
+    match_operation = make_prescription_state(INITIAL_STATE_SIZE, id)
+    start_time = timelib.time()
+
+    counter=0
+    while counter<number:
+        op = random.choices(
+            population=list(OPERATIONS.keys()),
+            weights=[op["prob"] for op in OPERATIONS.values()],
+            k=1
+        )[0]
+
+        elapsed = match_operation(op, counter)
 
         #print(i, " " ,log)
         log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed}\n")
@@ -163,3 +174,24 @@ def gen_workload(id, number):
         bar.update(1)
     bar.close()
 
+if __name__ == "__main__":
+    match_operation = make_prescription_state(INITIAL_STATE_SIZE, 0)
+
+    while True:
+        print("Available Operations:")
+        ops = list(OPERATIONS.keys())
+        for i, key in enumerate(ops):
+            print(f"{i+1}. {OPERATIONS[key]['name']}")
+
+        try:
+            choice = int(input("Choose an operation (1-9): "))
+            if choice == 0:
+                print("Exiting");
+                break
+            op_key = ops[choice - 1]
+        except (ValueError, IndexError):
+            print("Invalid choice.")
+            sys.exit(1)
+
+
+        match_operation(op=op_key)

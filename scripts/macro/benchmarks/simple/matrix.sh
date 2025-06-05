@@ -1,9 +1,9 @@
-LOGS="./logs/macro/authdag"
-CLIENTS=32
-OPERATIONS=1000
+LOGS="./logs/macro/matrix"
+CLIENTS=2
+OPERATIONS=250
 
 echo "Starting backend"
-cargo run --manifest-path ./backend/Cargo.toml --bin socket --features bench &
+cargo run --manifest-path ./backend/Cargo.toml --bin matrix --features bench &
 while ! netstat -an | grep LISTEN | grep -q 20076; do
     sleep 0.1
 done

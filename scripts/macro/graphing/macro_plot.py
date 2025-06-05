@@ -3,35 +3,75 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-def plot_graphs(df, place="."):
+
+def plot_graphs(df, place=".", strategy: str = "box"):
     # Ensure the elapsed columns are numeric
     df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
     df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')  
 
     df = df.fillna(0)
+    df['front_time'] = df['front_time'] + df['back_time']
 
-    os.makedirs("plots", exist_ok=True)
+
+    os.makedirs(f"plots/{place}", exist_ok=True)
 
     # Plot for each unique operation_name_script
     for op_name_x in df['client_operation'].unique():
         op_name = op_name_x.strip()
-        subset = df[df['client_operation'] == op_name]
+        if op_name == "":
+            continue
 
-        backend_time = subset['back_time']
-        frontend_time = subset['front_time']
-        total_time = subset['total_time']
-        extra_time =  total_time - frontend_time - backend_time
-
-        indices = range(len(subset))
+        subset = df[df['client_operation'].str.strip() == op_name]
         
         plt.figure(figsize=(10, 6))
-        #plt.bar(indices, extra_time, bottom=backend_time + frontend_time, label='Other Time', color='green')
-        plt.bar(indices, backend_time, label='Backend Time', color='skyblue')
 
-        plt.title(f'Elapsed Time Breakdown - {op_name}')
-        plt.xlabel('Record Index')
-        plt.ylabel('Time')
+        match strategy:
+            case "scatter":
+                plt.scatter(subset['front_id'], subset['back_time'], marker="o", 
+                         label=f'Backend Time', 
+                         alpha=0.7, color='#40456a')
+
+                plt.scatter(subset['front_id'], subset['front_time'], marker="o",
+                         label=f'Frontend Time',
+                         alpha=0.7, color='#f99d1b')
+                plt.title(f"Scatter plot {op_name}")
+
+            case "mean":
+                back= subset.groupby('front_id')['back_time'].mean().reset_index()
+                front= subset.groupby('front_id')['front_time'].mean().reset_index()
+
+                plt.plot(back['front_id'], back['back_time'],
+                         marker='o', linestyle='-',
+                         label=f'Backend Time', 
+                         alpha=0.7, color='#40456a')
+                plt.plot(front['front_id'],front['front_time'],
+                         marker='o', linestyle='-',
+                         label=f'Frontend Time',
+                         alpha=0.7, color='#f99d1b')
+                plt.title(f"Mean plot {op_name}")
+
+            case "box":
+                df = subset.copy()
+                df['id_qbin'] = pd.qcut(df['front_id'], q=20, duplicates='drop')
+
+                grouped_times = [group['front_time'].values for _, group in df.groupby('id_qbin')]
+                plt.boxplot(grouped_times, patch_artist=True,
+                         label=f'Frontend Time')
+
+                grouped_times = [group['back_time'].values for _, group in df.groupby('id_qbin')]
+                plt.boxplot(grouped_times, patch_artist=True,
+                         label=f'Backend Time')
+
+                plt.title(f"Box Plot: {op_name}")
+
+            case _:
+                return
+
+
+
+        plt.xlabel('System Time')
+        plt.ylabel('Request Time')
         plt.legend()
         plt.tight_layout()
         
