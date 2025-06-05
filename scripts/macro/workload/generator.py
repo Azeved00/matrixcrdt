@@ -20,10 +20,14 @@ def select_doctor():
     return zipf(DOCTORS, 3)
 
 def select_medication():
-    number = nprandom.poisson(lam=2)
-    meds = set()
-    for _ in range(number):
-        meds.add(zipf(MEDICINE, 1.1))
+    first_med = random.randint(0, MEDICINE - 1)
+    meds = {first_med}
+
+    additional_count = nprandom.poisson(lam=2)
+    while len(meds) < additional_count + 1:
+        med = zipf(MEDICINE, 1.1)
+        meds.add(med)
+
     return ",".join(str(med) for med in meds)
 
 def select_patient():
