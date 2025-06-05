@@ -83,6 +83,8 @@ def merge_files(input_path):
         'time_back': 'back_time'
     })
     df = df[['thread_id', 'front_id', 'client_operation', 'back_id', 'dag_operation', 'total_time', 'front_time', 'back_time']]
+    df['client_operation'] = df['client_operation'].fillna("").astype('string')
+
     return df
 
 

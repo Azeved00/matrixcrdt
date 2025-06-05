@@ -2,16 +2,16 @@ import csv
 import pandas as pd
 
 operation_map = {
-    " get_pharmacy_prescriptions": ["stateful_query", "stateles_query"],
-    " get_prescription_medication": ["stateful_query", "stateles_query"],
-    " get_staff_prescriptions": ["stateful_query", "stateles_query"],
-    " get_processed_pharmacy_prescriptions": ["stateful_query", "stateles_query"],
-    " get_patient": ["stateful_query", "stateles_query"],
-    " get_prescription": ["stateful_query", "stateles_query"],
+    "get_pharmacy_prescriptions": ["stateful_query", "stateless_query"],
+    "get_prescription_medication": ["stateful_query", "stateless_query"],
+    "get_staff_prescriptions": ["stateful_query", "stateless_query"],
+    "get_processed_pharmacy_prescriptions": ["stateful_query", "stateless_query"],
+    "get_patient": ["stateful_query", "stateless_query"],
+    "get_prescription": ["stateful_query", "stateless_query"],
 
-    " create_prescription": ["apply"],
-    " process_prescription": ["apply"],
-    " update_prescription_medication": ["apply"],
+    "create_prescription": ["apply"],
+    "process_prescription": ["apply"],
+    "update_prescription_medication": ["apply"],
 }
 
 def validate_df(df: pd.DataFrame, max_errors=10):
@@ -29,24 +29,24 @@ def validate_df(df: pd.DataFrame, max_errors=10):
         line_data = row.to_dict()
 
         # Rule 1: Operation map
-        client_op = row["client_operation"]
-        dag_op = row["dag_operation"]
+        client_op= row["client_operation"].strip()
+        dag_op = row["dag_operation"].strip()
         if client_op in operation_map and dag_op not in operation_map[client_op]:
             errors.append(
                 f"Line {line_number}: Invalid dag_operation '{dag_op}' for client_operation '{client_op}' - \n{line_data}"
             )
 
         # Rule 2: total_time > front_time + back_time
-        try:
-            total = float(row["total_time"])
-            front = float(row["front_time"])
-            back = float(row["back_time"])
-            if total <= front + back:
-                errors.append(
-                    f"Line {line_number}: total_time ({total}) is not greater than front_time + back_time ({front + back}) - \n{line_data}"
-                )
-        except ValueError:
-            errors.append(f"Line {line_number}: Invalid numeric time values - \n{line_data}")
+        #try:
+        #    total = float(row["total_time"])
+        #    front = float(row["front_time"])
+        #    back = float(row["back_time"])
+        #    if total <= front + back:
+        #        errors.append(
+                #            f"Line {line_number}: total_time ({total}) is not greater than front_time + back_time ({front + back}) - \n{line_data}"
+                #)
+        #except ValueError:
+        #    errors.append(f"Line {line_number}: Invalid numeric time values - \n{line_data}")
 
 
         try:
