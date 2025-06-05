@@ -98,6 +98,9 @@ export async function query(change_fn) {
 
     const startSerialize = process.hrtime.bigint();
     let message = new Message(code, clock, "");
+    if(ENV.debug){
+        console.log("Querying", message);
+    }
     const serialized = message.serialize();
     const endSerialize = process.hrtime.bigint();
 
@@ -135,6 +138,9 @@ export async function save(data) {
 
     const startSerialize = process.hrtime.bigint();
     let message = new Message("Update", clock, data);
+    if(ENV.debug){
+        console.log("Sending new Update", message);
+    }
     const endSerialize = process.hrtime.bigint();
 
     const ret = await sendAndWait(message.serialize())
