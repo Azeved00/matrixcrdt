@@ -3,13 +3,14 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-def plot_graphs(df, place="."):
+def plot_graphs(df, place=".", strategy: str = "box"):
     # Ensure the elapsed columns are numeric
     df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
     df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')  
 
     df = df.fillna(0)
+    df['front_time'] = df['front_time'] + df['back_time']
 
     os.makedirs(f"plots/{place}", exist_ok=True)
 
@@ -20,22 +21,52 @@ def plot_graphs(df, place="."):
             continue
 
         subset = df[df['client_operation'].str.strip() == op_name]
-
-        back = subset['back_time']
-        front = subset['front_time']
-
-        front = [a + b for a, b in zip(front, back)]
         
         plt.figure(figsize=(10, 6))
-        plt.plot(range(len(back)), back, marker="o", 
-                 label=f'Backend Time', 
-                 alpha=0.7, color='skyblue')
+        match strategy:
+            case "scatter":
+                plt.scatter(subset['front_id'], subset['back_time'], marker="o", 
+                         label=f'Backend Time', 
+                         alpha=0.7, color='#40456a')
 
-        plt.plot(range(len(front)), front, marker="o",
-                 label=f'Frontend Time',
-                 alpha=0.7, color='deepskyblue')
+                plt.scatter(subset['front_id'], subset['front_time'], marker="o",
+                         label=f'Frontend Time',
+                         alpha=0.7, color='#f99d1b')
+                plt.title(f"Scatter plot {op_name}")
 
-        #plt.title(f'Elapsed Time Breakdown - {op_name}')
+            case "mean":
+                back= subset.groupby('front_id')['back_time'].mean().reset_index()
+                front= subset.groupby('front_id')['front_time'].mean().reset_index()
+
+                plt.plot(back['front_id'], back['back_time'],
+                         marker='o', linestyle='-',
+                         label=f'Backend Time', 
+                         alpha=0.7, color='#40456a')
+                plt.plot(front['front_id'],front['front_time'],
+                         marker='o', linestyle='-',
+                         label=f'Frontend Time',
+                         alpha=0.7, color='#f99d1b')
+                plt.title(f"Mean plot {op_name}")
+
+            case "box":
+                df = subset.copy()
+                df['id_qbin'] = pd.qcut(df['front_id'], q=20, duplicates='drop')
+
+                grouped_times = [group['front_time'].values for _, group in df.groupby('id_qbin')]
+                plt.boxplot(grouped_times, patch_artist=True,
+                         label=f'Frontend Time')
+
+                grouped_times = [group['back_time'].values for _, group in df.groupby('id_qbin')]
+                plt.boxplot(grouped_times, patch_artist=True,
+                         label=f'Backend Time')
+
+                plt.title(f"Box Plot: {op_name}")
+
+            case _:
+                return
+
+
+
         plt.xlabel('System Time')
         plt.ylabel('Request Time')
         plt.legend()
