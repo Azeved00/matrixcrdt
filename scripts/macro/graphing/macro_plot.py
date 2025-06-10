@@ -2,16 +2,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 import os
+import seaborn as sns
 
 
-def plot_graphs(df, place=".", strategy: str = "box"):
-    # Ensure the elapsed columns are numeric
+def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
     df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
     df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')  
 
     df = df.fillna(0)
     df['front_time'] = df['front_time'] + df['back_time']
+
+    if warmup > 0 and len(df) > warmup:
+        df = df.iloc[warmup:]
 
 
     os.makedirs(f"plots/{place}", exist_ok=True)
@@ -36,6 +39,8 @@ def plot_graphs(df, place=".", strategy: str = "box"):
                          label=f'Frontend Time',
                          alpha=0.7, color='#f99d1b')
                 plt.title(f"Scatter plot {op_name}")
+                plt.xlabel('System Time')
+                plt.ylabel('Request Time')
 
             case "mean":
                 back= subset.groupby('front_id')['back_time'].mean().reset_index()
@@ -50,37 +55,43 @@ def plot_graphs(df, place=".", strategy: str = "box"):
                          label=f'Frontend Time',
                          alpha=0.7, color='#f99d1b')
                 plt.title(f"Mean plot {op_name}")
+                plt.xlabel('System Time')
+                plt.ylabel('Request Time')
 
             case "box":
-                df = subset.copy()
-                df['id_qbin'] = pd.qcut(df['front_id'], q=20, duplicates='drop')
+                box_df = subset.copy()
+                box_df['id_qbin'] = pd.qcut(box_df['front_id'], q=19, duplicates='drop')
+                box_df['id_qbin'] = box_df['id_qbin'].apply(
+                        lambda x: f"{int(x.left)}–{int(x.right)}")
 
-                grouped_times = [group['front_time'].values for _, group in df.groupby('id_qbin')]
-                plt.boxplot(grouped_times, patch_artist=True,
-                         label=f'Frontend Time')
-
-                grouped_times = [group['back_time'].values for _, group in df.groupby('id_qbin')]
-                plt.boxplot(grouped_times, patch_artist=True,
-                         label=f'Backend Time')
+                df_melted = pd.melt(
+                    box_df,
+                    id_vars='id_qbin',
+                    value_vars=['front_time', 'back_time'],
+                    var_name='Stage',
+                    value_name='Time'
+                )
+                sns.boxplot(x='id_qbin', y='Time', hue='Stage', data=df_melted)
 
                 plt.title(f"Box Plot: {op_name}")
+                plt.xticks(rotation=45)
+                plt.xlabel('System Time')
+                plt.ylabel('Request Time')
 
             case _:
+                print("invalid strategy")
                 return
 
-
-
-        plt.xlabel('System Time')
-        plt.ylabel('Request Time')
         plt.legend()
         plt.tight_layout()
         
-        # Save each plot
-        plt.savefig(f'plots/{place}/{op_name}.png')
-        #plt.close()
-        #plt.show()
+        if show:
+            plt.show()
+        else:
+            plt.savefig(f'plots/{place}/{op_name}.png')
+        plt.close()
 
-def plot_comparisson(df1, df1_name, df2, df2_name, place = "."):
+def plot_comparisson(df1, df1_name, df2, df2_name, place = ".", show=False):
     # Ensure the elapsed columns are numeric
     for df in [df1, df2]:
         df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
@@ -126,7 +137,10 @@ def plot_comparisson(df1, df1_name, df2, df2_name, place = "."):
         plt.legend()
         plt.tight_layout()
 
-        plt.savefig(f'plots/{place}/{op_name}.png')
+        if show:
+            plt.show()
+        else:
+            plt.savefig(f'plots/{place}/{op_name}.png')
         plt.close()
 
 if __name__=="__main__":
