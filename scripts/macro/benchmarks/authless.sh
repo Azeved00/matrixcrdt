@@ -1,5 +1,5 @@
 LOGS="./logs/macro/authless"
-CLIENTS=2
+CLIENTS=32
 OPERATIONS=250
 
 echo "Starting backend"
