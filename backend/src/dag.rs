@@ -1,7 +1,7 @@
 use log::error;
 use std::fmt::{Formatter, Debug, Result};
 use std::vec::Vec;
-use std::collections::{HashMap, BinaryHeap, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use dashmap::DashMap;
 use std::cmp;
 use std::io;
@@ -336,29 +336,20 @@ impl<O> MerkleDag<O>
             Some(cursor) => cursor,
             None => QueryCursor::new()
         };
-        let mut heap = BinaryHeap::<Arc<Node<O>>>::new();
+        let mut index = self.topo.len()-1;
         let size = self.topo.len() - cursor.index;
         let mut vis :Vec<bool> = vec![false; size.try_into().unwrap()];
         let mut res = Vec::<O>::new();
 
-        for pair in &self.heads {
-            let (_, node) = pair.pair();
-            if node.index < cursor.index {
-                continue
-            }
-
-            heap.push((*node).clone());
-        }
-
-        for head_hash in &cursor.heads{
+        for head_hash in &cursor.heads {
             let head = self.get_node(&head_hash).unwrap();
             if head.index > cursor.index {
                 vis[head.index - cursor.index] = true;
             }
         }
 
-        while !heap.is_empty() {
-            let top = heap.pop().expect("Heap should not be empty");
+        while index >= cursor.index {
+            let top = &self.topo[index];
 
             for parent_hash in &top.parents {
                 let parent = self.get_node(&parent_hash).unwrap();
@@ -368,12 +359,15 @@ impl<O> MerkleDag<O>
                 else if vis[top.index - cursor.index]{
                     vis[parent.index - cursor.index] = true;
                 } 
-                heap.push(parent);
             }
             
             if !vis[top.index - cursor.index]{
                 res.push(top.data.clone());
             } 
+            if index == 0 {
+                break;
+            }
+            index -= 1;
         }
 
         let mut cursor = QueryCursor::new();
