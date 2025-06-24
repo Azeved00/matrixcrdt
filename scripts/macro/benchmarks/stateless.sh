@@ -1,6 +1,6 @@
 LOGS="./logs/macro/stateless"
-CLIENTS=2
-OPERATIONS=250
+CLIENTS=10
+OPERATIONS=25
 
 echo "Starting backend"
 cargo run --manifest-path ./backend/Cargo.toml --bin socket --features bench &

@@ -1,4 +1,3 @@
-import random
 from stats import * 
 from numpy import random as nprandom
 import time as timelib
@@ -7,9 +6,12 @@ import sys
 from tqdm import tqdm
 
 
-def zipf(max_value, a=1.5):
+def zipf(max_value, a=1.5, rng=None):
+    if rng is None:
+        rng = nprandom.default_rng()
+
     while True:
-        val = nprandom.zipf(a)
+        val = rng.zipf(a)
         if val <= max_value:
             return val-1
 
@@ -19,11 +21,13 @@ def select_pharmacy():
 def select_doctor():
     return zipf(DOCTORS, 3)
 
-def select_medication():
-    first_med = random.randint(0, MEDICINE - 1)
+def select_medication(rng):
+    if rng is None:
+        rng = nprandom.default_rng()
+    first_med = rng.integers(low=0, high=MEDICINE)
     meds = {first_med}
 
-    additional_count = nprandom.poisson(lam=2)
+    additional_count = rng.poisson(lam=2)
     while len(meds) < additional_count + 1:
         med = zipf(MEDICINE, 1.1)
         meds.add(med)
@@ -33,8 +37,11 @@ def select_medication():
 def select_patient():
     return zipf(PATIENTS, 10)
 
-def select_prescription(prescriptions):
-    return random.choice(list(prescriptions))
+def select_prescription(prescriptions, rng=None):
+    if rng is None:
+        rng = nprandom.default_rng()
+
+    return rng.choice(list(prescriptions))
 
 def make_request(operation, path,counter,  data={}):
     headers = {}
@@ -60,12 +67,12 @@ def make_request(operation, path,counter,  data={}):
 
     return (end-start) / 1000
 
-def make_prescription_state(initial_size=10, id=0):
+def make_prescription_state(initial_size=10, id=0, rng=None):
     prescriptions = set(99_000_000 + i for i in range(initial_size))
     prescription_id = initial_size
     server_addr=calc_server_addr(id)
 
-    def match_operation(op, counter):
+    def match_operation(op, counter, rng):
         nonlocal prescription_id
         elapsed = -1
         match OPERATIONS[op]["name"]:
@@ -127,7 +134,7 @@ def make_prescription_state(initial_size=10, id=0):
                 if len(prescriptions) <= 0:
                     raise Exception("No Prescriptions to update")
 
-                medication = select_medication()
+                medication = select_medication(rng)
                 data = { "medication": medication }
 
                 presc = select_prescription(prescriptions)
@@ -148,7 +155,10 @@ def make_prescription_state(initial_size=10, id=0):
 
     return match_operation
 
-def gen_workload(id, number):
+def gen_workload(id, number, rng=None):
+    if rng is None:
+        rng = nprandom.default_rng()
+
     bar = tqdm(total=number, desc=f"Thread {id}", position=id, leave=True)
     
     log = open(f"log_{id+1}.csv", 'w')
@@ -160,13 +170,12 @@ def gen_workload(id, number):
 
     counter=0
     while counter<number:
-        op = random.choices(
-            population=list(OPERATIONS.keys()),
-            weights=[op["prob"] for op in OPERATIONS.values()],
-            k=1
-        )[0]
+        op = rng.choice(
+            list(OPERATIONS.keys()),
+            p=[op["prob"] for op in OPERATIONS.values()],
+        )
 
-        elapsed = match_operation(op, counter)
+        elapsed = match_operation(op, counter, rng)
 
         #print(i, " " ,log)
         log.write(f"{counter}, {OPERATIONS[op]["name"]}, {elapsed}\n")

@@ -1,6 +1,6 @@
 LOGS="./logs/macro/authless"
 CLIENTS=32
-OPERATIONS=250
+OPERATIONS=500
 
 echo "Starting backend"
 cargo run --manifest-path ./backend/Cargo.toml --bin baseline --features bench &

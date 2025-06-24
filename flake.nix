@@ -27,33 +27,6 @@
                 '';
             };
 
-            graph = pkgs.mkShell {
-                inherit ROOT;
-                name = "graphing";
-
-                buildInputs = with pkgs; [
-                    (python3.withPackages (pp: with pp;[
-                        pandas
-                        matplotlib
-                        seaborn
-                    ]))
-                ];
-
-                shellHook = ''
-                    plot-box() {
-                        pushd $ROOT/logs
-                        python3 $ROOT/scripts/graphing/box_graph.py $1
-                        popd
-                    }
-                    plot-line() {
-                        pushd $ROOT/logs
-                        python3 $ROOT/scripts/graphing/line_graph.py $1
-                        popd
-                    }
-                '';
-            };
-
-
             run = pkgs.mkShell {
                 inherit ROOT;
                 name = "Run";
@@ -70,8 +43,12 @@
 
                     (python3.withPackages (pp: with pp;[
                         numpy
+                        invoke
                         requests
                         tqdm
+                        pandas
+                        matplotlib
+                        seaborn
                     ]))
                 ];
 

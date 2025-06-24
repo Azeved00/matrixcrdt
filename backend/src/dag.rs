@@ -225,23 +225,11 @@ impl<O> MerkleDag<O>
     /// $E$ the number of edges of the graph
     pub fn linearize(&self) -> Vec<Node<O>> {
         let mut res = vec![];
-        let mut indegree = HashMap::new();
         let mut queue = VecDeque::new();
 
-        for pair in &self.dag {
+        for pair in &self.heads {
             let (_, node) = pair.pair();
-            indegree.entry(node.id.clone()).or_insert(0);
-            for parent_hash in &node.parents {
-                *indegree.entry(parent_hash.clone()).or_insert(0) += 1;
-            }
-        }
-
-        for pair in &self.dag {
-            let (hash, node) = pair.pair();
-
-            if let Some(0) = indegree.get(hash) {
-                queue.push_back(node.clone());
-            }
+            queue.push_back(node.clone())
         }
 
         while let Some(node) = queue.pop_front() {
@@ -249,12 +237,7 @@ impl<O> MerkleDag<O>
 
             for parent_hash in &node.parents {
                 if let Some(parent_node) = self.dag.get(parent_hash) {
-                    if let Some(indeg) = indegree.get_mut(&parent_node.id) {
-                        *indeg -= 1;
-                        if *indeg == 0 {
-                            queue.push_back(parent_node.clone());
-                        }
-                    }
+                    queue.push_back(parent_node.clone());
                 } 
                 else if !self.partial {
                     error!("Linearization error: parent {:?} of node {:?} is not in dag", parent_hash, node.id);

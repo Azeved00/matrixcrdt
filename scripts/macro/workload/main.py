@@ -2,7 +2,10 @@ import sys
 import threading
 from generator import gen_workload
 from initial_state import gen_initial_state, get_initial_state
+import random
 import logging
+import argparse
+import numpy as np
 import time
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] Client %(client)d - %(message)s', datefmt='%H:%M:%S')
 
@@ -10,39 +13,44 @@ def log_step(client_id, msg):
     logging.info(msg, extra={'client': client_id})
 
 
-def gen_client_workload(id, time_limit):
+def gen_client_workload(id, time_limit, rng):
     log_step(id, "starting workload")
-    gen_workload(id, time_limit)
+    gen_workload(id, time_limit, rng=rng)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python script.py <clients> <operations>")
-        exit(1)
+    parser = argparse.ArgumentParser(description="Simulate client workload")
+    parser.add_argument("clients", type=int, help="Number of clients")
+    parser.add_argument("operations", type=int, help="Number of operations per client")
+    parser.add_argument("--seed", "-s", type=int, help="Optional random seed")
 
-    try:
-        clients = int(sys.argv[1])
-        op_num = int(sys.argv[2])
-        threads = []
+    args = parser.parse_args()
 
-        log_step(0, "Generating initial state")
-        gen_initial_state(0)
-        log_step(0, "finished generating initial state")
-        time.sleep(1)
+    if args.seed is not None:
+        seed = args.seed
+    else:
+        seed = random.SystemRandom().randint(0, 2**32 - 1)
+        print(f"Generated random seed: {seed}")
 
-        for i in range(1, clients):
-            log_step(i, "Querying initial state")
-            get_initial_state(i)
-            log_step(i, "finished querying initial state")
+    rng = np.random.default_rng(seed)
 
-        for i in range(0, clients):
-            thread = threading.Thread(target=gen_client_workload,
-                                      args=(i, op_num))
-            thread.start()
-            threads.append(thread)
+    clients = args.clients
+    op_num = args.operations
+    threads = []
 
-        for thread in threads:
-            thread.join()
+    log_step(0, "Generating initial state")
+    gen_initial_state(0)
+    log_step(0, "Finished generating initial state")
+    time.sleep(1)
 
-    except ValueError:
-        print("Both arguments must be integers.")
-        exit(1)
+    for i in range(1, clients):
+        log_step(i, "Querying initial state")
+        get_initial_state(i)
+        log_step(i, "Finished querying initial state")
+
+    for i in range(clients):
+        thread = threading.Thread(target=gen_client_workload, args=(i, op_num, rng))
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()

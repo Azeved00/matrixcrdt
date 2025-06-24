@@ -1,0 +1,5 @@
+tasks:
+  search_root: "."         # Allow Invoke to find tasks.py anywhere in project
+  collection_name: "ns"    # Tell it the root collection variable is `ns`
+run:
+  echo: true               # Optional: show commands when run
