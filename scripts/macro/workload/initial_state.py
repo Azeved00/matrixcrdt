@@ -1,6 +1,6 @@
 import requests
 import sys
-from stats import * 
+from .stats import * 
 
 
 def gen_initial_state(client_id):

@@ -1,4 +1,4 @@
-from stats import * 
+from .stats import * 
 from numpy import random as nprandom
 import time as timelib
 import requests

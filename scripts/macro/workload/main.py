@@ -1,12 +1,15 @@
 import sys
 import threading
-from generator import gen_workload
-from initial_state import gen_initial_state, get_initial_state
 import random
 import logging
 import argparse
 import numpy as np
 import time
+
+
+from .generator import gen_workload
+from .initial_state import gen_initial_state, get_initial_state
+
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] Client %(client)d - %(message)s', datefmt='%H:%M:%S')
 
 def log_step(client_id, msg):
@@ -17,24 +20,13 @@ def gen_client_workload(id, time_limit, rng):
     log_step(id, "starting workload")
     gen_workload(id, time_limit, rng=rng)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Simulate client workload")
-    parser.add_argument("clients", type=int, help="Number of clients")
-    parser.add_argument("operations", type=int, help="Number of operations per client")
-    parser.add_argument("--seed", "-s", type=int, help="Optional random seed")
-
-    args = parser.parse_args()
-
-    if args.seed is not None:
-        seed = args.seed
-    else:
+def run_workload(clients, operations, seed=None):
+    if seed is None:
         seed = random.SystemRandom().randint(0, 2**32 - 1)
         print(f"Generated random seed: {seed}")
 
     rng = np.random.default_rng(seed)
 
-    clients = args.clients
-    op_num = args.operations
     threads = []
 
     log_step(0, "Generating initial state")
@@ -48,9 +40,23 @@ if __name__ == "__main__":
         log_step(i, "Finished querying initial state")
 
     for i in range(clients):
-        thread = threading.Thread(target=gen_client_workload, args=(i, op_num, rng))
+        thread = threading.Thread(target=gen_client_workload, args=(i, operations, rng))
         thread.start()
         threads.append(thread)
 
     for thread in threads:
         thread.join()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Simulate client workload")
+    parser.add_argument("clients", type=int, help="Number of clients")
+    parser.add_argument("operations", type=int, help="Number of operations per client")
+    parser.add_argument("--seed", "-s", type=int, help="Optional random seed")
+
+    args = parser.parse_args()
+
+    run_workload(
+            clients=args.clients,
+            operations=args.operations,
+            seed=args.seed)
+

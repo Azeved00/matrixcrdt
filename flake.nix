@@ -30,11 +30,12 @@
             run = pkgs.mkShell {
                 inherit ROOT;
                 name = "Run";
+                PYTHONPATH=ROOT;
 
                 buildInputs = with pkgs;[
                     cargo rustc 
 
-                    nodejs_23
+                    nodejs_24
                     nodePackages.npm
                     libnotify
                     openssl

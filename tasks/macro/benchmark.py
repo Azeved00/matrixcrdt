@@ -7,7 +7,9 @@ import glob
 import signal
 import sys
 
-def wait_for_port(port, delay=0.1, timeout=10):
+from scripts.macro.workload import run_workload
+
+def wait_for_port(port, delay=0.1, timeout=60):
     start = time.time()
     while True:
         result = subprocess.run(["netstat", "-an"], capture_output=True, text=True)
@@ -61,8 +63,9 @@ def run_benchmark(c, backend_bin, clients=2, operations=10000, logs_dir="./logs/
             procs.append(proc)
             wait_for_port(port)
 
+        time.sleep(1)
         print("🚀 Starting workload script...")
-        subprocess.run([sys.executable, "./scripts/macro/workload/main.py", str(clients), str(operations)], check=True)
+        run_workload(clients, operations)
 
     except subprocess.CalledProcessError as e:
         print(f"❌ A subprocess failed: {e}")
@@ -82,55 +85,6 @@ def run_benchmark(c, backend_bin, clients=2, operations=10000, logs_dir="./logs/
         move_logs(logs_dir, "./frontend/src/*.csv", "front")
         move_logs(logs_dir, "./backend/*.csv", "back")
 
-        print("✅ Benchmark complete (with or without errors).")
+        print("✅ Benchmark complete.")
         notify_user()
 
-@task
-def graph(c, log_dir1, log_dir2="", strategy="scatter", display=True, warmup=0):
-
-# === Specific benchmark wrappers with customizable clients & operations ===
-
-@task()
-def authdag(c, clients=2, operations=10000):
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir="./logs/macro/authdag",
-
-        backend_bin="socket",
-    )
-
-@task()
-def stateless(c, clients=3, operations=5000):
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir="./logs/macro/stateless",
-
-        backend_bin="socket",
-        frontend_env="stateless"
-    )
-
-@task()
-def authless(c, clients=3, operations=5000):
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir="./logs/macro/authless",
-
-        backend_bin="baseline",
-    )
-
-@task()
-def matrix(c, clients=3, operations=5000):
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir="./logs/macro/matrix",
-
-        backend_bin="socket",
-    )
