@@ -1,7 +1,7 @@
 from invoke import task, Collection
 
 from scripts.macro.workload import run_workload
-from scripts.macro.graph import graph_single
+from scripts.macro.graph import plot_graphs, merge, make_table
 from . import workload, graph
 from .benchmark import run_benchmark
 
@@ -24,29 +24,27 @@ def benchmark(c, name, clients, operations):
     )
 
     print("📈 Graphing results...")
-    graph_single(
-        name=name,
-        input_path=log_dir,
-        strategy="mean",
-        display=False,
-        warmup=0
-    )
+    df1 = merge(name, log_dir, True)
+    plot_graphs(df1, name,
+                strategy="mean", show=False, warmup=0)
+
+    make_table(df1, include_front=False, latex=True)
 
 @task()
 def sauthdag(c, clients=2, operations=10000):
     benchmark(c,"authdag", clients, operations)
 
 @task()
-def sstateless(c, clients=2, operations=100):
-    benchmark(c,"authdag", clients, operations)
+def sstateless(c, clients=2, operations=1000):
+    benchmark(c,"stateless", clients, operations)
 
 @task()
 def sauthless(c, clients=2, operations=10000):
-    benchmark(c,"authdag", clients, operations)
+    benchmark(c,"authless", clients, operations)
 
 @task()
 def smatrix(c, clients=2, operations=10000):
-    benchmark(c,"authdag", clients, operations)
+    benchmark(c,"matrix", clients, operations)
 @task()
 def sall(c):
     """Run all simple benchmarks in sequence."""

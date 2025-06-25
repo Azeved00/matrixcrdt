@@ -91,7 +91,7 @@ def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
             plt.savefig(f'plots/{place}/{op_name}.png')
         plt.close()
 
-def plot_comparisson(df1, df1_name, df2, df2_name, place = ".", show=False):
+def plot_comparison(df1, df1_name, df2, df2_name, place = ".", show=False):
     # Ensure the elapsed columns are numeric
     for df in [df1, df2]:
         df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
@@ -165,6 +165,6 @@ if __name__=="__main__":
         plot_graphs(df1, args[0])
         print("Plots saved in 'plots' directory.")
     else:
-        plot_comparisson(df1,args[0],df2,args[1], f"{args[0]}x{args[1]}")
+        plot_comparison(df1,args[0],df2,args[1], f"{args[0]}x{args[1]}")
         print("Plots saved in 'plots' directory.")
 

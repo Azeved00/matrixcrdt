@@ -1,18 +1,17 @@
 import pandas as pd
 import argparse
 
-def summarize_operations(csv_path, include_front=True):
+def summarize_operations(df, include_front=True):
     """
     Summarizes operation statistics from a CSV file.
 
     Parameters:
-        csv_path (str): Path to the CSV file.
+        df: pd.DataFrame of the csv 
         include_front (bool): If True, includes front_time statistics.
 
     Returns:
         pd.DataFrame: Summary table with average, 95th, and 99th percentiles.
     """
-    df = pd.read_csv(csv_path)
     df = df[df['front_id'] != -1]
 
     # Validate that each operation maps to a single dag_operation
@@ -44,8 +43,8 @@ def summarize_operations(csv_path, include_front=True):
 
     return summary
 
-def make_table(csv_path, include_front=True, latex=False):
-    summary = summarize_operations(csv_path, include_front=include_front)
+def make_table(df, include_front=True, latex=False):
+    summary = summarize_operations(df, include_front=include_front)
 
     if latex:
         latex_table = summary.to_latex(index=False, float_format="%.2f")
@@ -69,4 +68,5 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    make_table(args.csv_file, include_front= not args.no_front, latex=args.latex)
+    df = pd.read_csv(args.csv_file)
+    make_table(df, include_front= not args.no_front, latex=args.latex)
