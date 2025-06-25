@@ -45,7 +45,8 @@ def run_benchmark(c, backend_bin, clients=2, operations=10000, logs_dir="./logs/
     try:
         print(f"🔧 Starting backend binary: {backend_bin}")
         backend = subprocess.Popen(
-            ["cargo", "run", "--manifest-path", "./backend/Cargo.toml", "--bin", backend_bin, "--features", "bench"]
+            ["cargo", "run", "--manifest-path", "./backend/Cargo.toml", 
+             "--bin", backend_bin, "--features", "bench"]
         )
         procs.append(backend)
         wait_for_port(20076)

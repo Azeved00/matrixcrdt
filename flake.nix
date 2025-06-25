@@ -44,6 +44,7 @@
 
                     (python3.withPackages (pp: with pp;[
                         numpy
+                        jinja2
                         invoke
                         requests
                         tqdm

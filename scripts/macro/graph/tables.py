@@ -44,6 +44,15 @@ def summarize_operations(csv_path, include_front=True):
 
     return summary
 
+def make_table(csv_path, include_front=True, latex=False):
+    summary = summarize_operations(csv_path, include_front=include_front)
+
+    if latex:
+        latex_table = summary.to_latex(index=False, float_format="%.2f")
+        print(latex_table)
+    else:
+        print(summary)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Summarize operation stats from a CSV file.")
     parser.add_argument("csv_file", help="Path to the input CSV file.")
@@ -53,6 +62,11 @@ if __name__ == "__main__":
         help="Exclude front_time statistics from the summary."
     )
 
+    parser.add_argument(
+        "--latex",
+        action="store_true",
+        help="Output table as latex."
+    )
+
     args = parser.parse_args()
-    summary = summarize_operations(args.csv_file, include_front=not args.no_front)
-    print(summary)
+    make_table(args.csv_file, include_front= not args.no_front, latex=args.latex)

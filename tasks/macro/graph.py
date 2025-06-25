@@ -1,7 +1,7 @@
 from invoke import task
 from invoke import Collection
 
-from scripts.macro.graph import graph_single, graph_comparison
+from scripts.macro.graph import graph_single, graph_comparison, make_table
 
 @task
 def single(ctx, name, input_path, strategy, display=False, warmup=0):
@@ -23,6 +23,12 @@ def comparison(ctx, name1, input_path1, name2, input_path2,
     graph_comparisson(name1, input_path1, name2, input_path2, 
                       strategy, display, warmup)
 
+@task
+def table(ctx, input_path, include_front=False, latex=False ):
+    """Print The latex ."""
+    make_table(input_path, include_front, latex)
+
 ns = Collection("graph")
 ns.add_task(single)
 ns.add_task(comparison)
+ns.add_task(table)

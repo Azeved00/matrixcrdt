@@ -6,8 +6,8 @@ from . import workload, graph
 from .benchmark import run_benchmark
 
 @task()
-def authdag(c, clients=2, operations=10000):
-    log_dir="./logs/macro/authdag/"
+def benchmark(c, name, clients, operations):
+    log_dir=f"./logs/macro/{name}/"
 
     print("🔧 Running benchmark...")
     run_benchmark(
@@ -16,12 +16,16 @@ def authdag(c, clients=2, operations=10000):
         operations=operations,
         logs_dir=log_dir,
 
-        backend_bin="socket",
+        backend_bin=
+                 "socket" if name != "authless" 
+            else "baseline" if name == "authless" 
+            else "matrix",
+        frontend_env= "stateless" if name == "stateless" else "",
     )
 
     print("📈 Graphing results...")
     graph_single(
-        name="authdag",
+        name=name,
         input_path=log_dir,
         strategy="mean",
         display=False,
@@ -29,83 +33,72 @@ def authdag(c, clients=2, operations=10000):
     )
 
 @task()
-def stateless(c, clients=2, operations=100):
-    log_dir="./logs/macro/stateless"
-
-    print("🔧 Running benchmark...")
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir=log_dir,
-
-        backend_bin="socket",
-        frontend_env="stateless"
-    )
-
-    print("📈 Graphing results...")
-    graph_single(
-        name="stateless",
-        input_path=log_dir,
-        strategy="mean",
-        display=False,
-        warmup=0
-    )
+def sauthdag(c, clients=2, operations=10000):
+    benchmark(c,"authdag", clients, operations)
 
 @task()
-def authless(c, clients=2, operations=10000):
-    log_dir="./logs/macro/authless"
+def sstateless(c, clients=2, operations=100):
+    benchmark(c,"authdag", clients, operations)
 
-    print("🔧 Running benchmark...")
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir=log_dir,
+@task()
+def sauthless(c, clients=2, operations=10000):
+    benchmark(c,"authdag", clients, operations)
 
-        backend_bin="baseline",
-    )
+@task()
+def smatrix(c, clients=2, operations=10000):
+    benchmark(c,"authdag", clients, operations)
+@task()
+def sall(c):
+    """Run all simple benchmarks in sequence."""
+    sauthdag(c,)
+    sstateless(c)
+    sauthless(c)
+    smatrix(c)
 
-    print("📈 Graphing results...")
-    graph_single(
-        name="authless",
-        input_path=log_dir,
-        strategy="mean",
-        display=False,
-        warmup=0
-    )
+ns_simple = Collection()
+ns_simple.add_task(sauthdag, name="authdag")
+ns_simple.add_task(sstateless, name="stateless")
+ns_simple.add_task(sauthless, name="authless")
+ns_simple.add_task(smatrix, name="matrix")
+ns_simple.add_task(sall, name="all", default=True)
 
 
 @task()
-def matrix(c, clients=2, operations=5000):
-    log_dir="./logs/macro/matrix"
+def fauthdag(c, clients=32, operations=10000):
+    benchmark(c,"authdag", clients, operations)
 
-    print("🔧 Running benchmark...")
-    run_benchmark(
-        c,
-        clients=clients,
-        operations=operations,
-        logs_dir=log_dir,
+@task()
+def fstateless(c, clients=32, operations=100):
+    benchmark(c,"authdag", clients, operations)
 
-        backend_bin="matrix",
-    )
+@task()
+def fauthless(c, clients=32, operations=10000):
+    benchmark(c,"authdag", clients, operations)
 
-    print("📈 Graphing results...")
-    graph_single(
-        name="matrix",
-        input_path=log_dir,
-        strategy="mean",
-        display=False,
-        warmup=0
-    )
+@task()
+def fmatrix(c, clients=32, operations=10000):
+    benchmark(c,"authdag", clients, operations)
+
+@task()
+def fall(c):
+    """Run all full benchmarks in sequence."""
+    fauthdag(c)
+    fstateless(c)
+    fauthless(c)
+    fmatrix(c)
+
+ns_full = Collection()
+ns_full.add_task(fauthdag, name="authdag")
+ns_full.add_task(fstateless, name="stateless")
+ns_full.add_task(fauthless, name="authless")
+ns_full.add_task(fmatrix, name="matrix")
+ns_full.add_task(fall, name="all", default=True)
 
 
-# Create collection and add submodules and tasks
 ns = Collection()
-ns.add_task(authdag)
-ns.add_task(stateless)
-ns.add_task(authless)
-ns.add_task(matrix)
+
+ns.add_collection(ns_simple, name="simple")
+ns.add_collection(ns_full, name="full")
 
 ns.add_task(workload.workload)
 ns.add_task(run_benchmark, name="benchmark")
