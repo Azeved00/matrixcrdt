@@ -1,54 +1,108 @@
 import pandas as pd
+import numpy as np
 import argparse
+from scipy import stats
 
-def summarize_operations(df, include_front=True):
-    """
-    Summarizes operation statistics from a CSV file.
+def make_back_summary(df, n_parts=4):
+    from scipy import stats
+    import numpy as np
 
-    Parameters:
-        df: pd.DataFrame of the csv 
-        include_front (bool): If True, includes front_time statistics.
-
-    Returns:
-        pd.DataFrame: Summary table with average, 95th, and 99th percentiles.
-    """
     df = df[df['front_id'] != -1]
+    df_group = df.groupby('client_operation')
 
-    # Validate that each operation maps to a single dag_operation
-    op_to_dag = df[['client_operation', 'dag_operation']].drop_duplicates()
-    if op_to_dag.duplicated('client_operation').any():
-        print( op_to_dag.duplicated('client_operation'))
-        raise ValueError("Each operation must map to a single dag_operation.")
+    summary = []
 
-    def compute_stats(group):
-        stats = {
-            'back_avg': group['back_time'].mean(),
-            'back_p95': group['back_time'].quantile(0.95),
-            'back_p99': group['back_time'].quantile(0.99),
-        }
-        if include_front:
-            stats.update({
-                'front_avg': group['front_time'].mean(),
-                'front_p95': group['front_time'].quantile(0.95),
-                'front_p99': group['front_time'].quantile(0.99),
-            })
-        return pd.Series(stats)
+    for group_name, dfg in df_group:
+        parts = np.array_split(dfg, n_parts)
+        row = {'client_operation': group_name}
 
-    summary = df.groupby('client_operation').apply(lambda g: compute_stats(g.drop(columns='client_operation'))).reset_index()
-    summary = summary.merge(op_to_dag, on='client_operation')
+        for i, part_df in enumerate(parts):
+            data = part_df['back_time'].values
+            mean = np.mean(data)
+            sem = stats.sem(data)
+            ci = stats.t.interval(0.95, len(data)-1, loc=mean, scale=sem) if len(data) > 1 else (mean, mean)
 
-    # Optional: reorder columns
-    cols = ['client_operation', 'dag_operation'] + [c for c in summary.columns if c not in ('client_operation', 'dag_operation')]
-    summary = summary[cols]
+            row[f'Part{i+1}_Mean'] = mean
+            row[f'Part{i+1}_CI'] = f"[{ci[0]:.2f}, {ci[1]:.2f}]"
+            row[f'Part{i+1}_SEM'] = sem
 
-    return summary
+        summary.append(row)
 
-def make_table(df, include_front=True, latex=False):
-    summary = summarize_operations(df, include_front=include_front)
+    return pd.DataFrame(summary)
+
+def make_latex_table(df_summary, n_parts):
+    header = "\\begin{tabular}{" + "l" + "|ccc" * n_parts + "}\n"
+    header += "\\hline\n"
+
+    # First row: merged column group headers
+    header += "Client Operation"
+    for i in range(n_parts):
+        header += f" & \\multicolumn{{3}}{{c}}{{Part {i+1}}}"
+    header += " \\\\\n"
+
+    # Second row: sub-headers
+    header += " "
+    for i in range(n_parts):
+        header += " & Mean & 95\\% CI & SEM"
+    header += " \\\\\n\\hline\n"
+
+    # Table rows
+    body = ""
+    for _, row in df_summary.iterrows():
+        body += f"{row['client_operation'].replace("_"," ")}"
+        for i in range(n_parts):
+            mean = f"{row[f'Part{i+1}_Mean']:.2f}"
+            ci = row[f'Part{i+1}_CI']
+            sem = f"{row[f'Part{i+1}_SEM']:.2f}"
+            body += f" & {mean} & {ci} & {sem}"
+        body += " \\\\\n"
+
+    footer = "\\hline\n\\end{tabular}"
+
+    return header + body + footer
+
+def print_summary(df_summary, n_parts):
+    col_headers = ["Client Operation"]
+    for i in range(n_parts):
+        col_headers.extend([f"P{i+1} Mean", f"P{i+1} 95% CI", f"P{i+1} SEM"])
+
+    # Build rows
+    rows = []
+    for _, row in df_summary.iterrows():
+        row_data = [str(row['client_operation'])]
+        for i in range(n_parts):
+            row_data.append(f"{row[f'Part{i+1}_Mean']:.2f}")
+            row_data.append(str(row[f'Part{i+1}_CI']))
+            row_data.append(f"{row[f'Part{i+1}_SEM']:.2f}")
+        rows.append(row_data)
+
+    # Compute column widths
+    col_widths = [max(len(str(cell)) for cell in [header] + [row[i] for row in rows]) for i, header in enumerate(col_headers)]
+
+    # Helper: format a row
+    def format_row(row):
+        return "| " + " | ".join(f"{cell:<{col_widths[i]}}" for i, cell in enumerate(row)) + " |"
+
+    # Print header
+    print("-" * (sum(col_widths) + 3 * len(col_headers) + 1))
+    print(format_row(col_headers))
+    print("-" * (sum(col_widths) + 3 * len(col_headers) + 1))
+
+    # Print rows
+    for row in rows:
+        print(format_row(row))
+    print("-" * (sum(col_widths) + 3 * len(col_headers) + 1))
+
+
+def make_table(df, include_front=True, latex=False, table=False):
+    parts = 4
+    summary = make_back_summary(df, parts)
 
     if latex:
-        latex_table = summary.to_latex(index=False, float_format="%.2f")
+        latex_table = make_latex_table(summary, parts)
         print(latex_table)
+    elif table:
+        print_summary(summary, parts)
     else:
         print(summary)
 
@@ -69,4 +123,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     df = pd.read_csv(args.csv_file)
-    make_table(df, include_front= not args.no_front, latex=args.latex)
+    make_table(df, include_front= not args.no_front, latex=args.latex, table=True)
