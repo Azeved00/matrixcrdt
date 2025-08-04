@@ -5,7 +5,9 @@ import os
 import seaborn as sns
 
 
-def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
+def plot_graphs(df, place=".", strategy: str = "box", 
+                warmup=0,
+                show=False, include_front=True, use_dag_ops=False):
     df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
     df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')  
@@ -20,12 +22,13 @@ def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
     os.makedirs(f"plots/{place}", exist_ok=True)
 
     # Plot for each unique operation_name_script
-    for op_name_x in df['client_operation'].unique():
+    op_field = 'dag_operation' if use_dag_ops else 'client_operation'
+    for op_name_x in df[op_field].unique():
         op_name = op_name_x.strip()
         if op_name == "":
             continue
 
-        subset = df[df['client_operation'].str.strip() == op_name]
+        subset = df[df[op_field].str.strip() == op_name]
         
         plt.figure(figsize=(10, 6))
 
@@ -35,9 +38,10 @@ def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
                          label=f'Backend Time', 
                          alpha=0.7, color='#40456a')
 
-                plt.scatter(subset['front_id'], subset['front_time'], marker="o",
-                         label=f'Frontend Time',
-                         alpha=0.7, color='#f99d1b')
+                if  include_front:
+                    plt.scatter(subset['front_id'], subset['front_time'], marker="o",
+                             label=f'Frontend Time',
+                             alpha=0.7, color='#f99d1b')
                 plt.title(f"Scatter plot {op_name}")
                 plt.xlabel('System Time')
                 plt.ylabel('Request Time')
@@ -50,10 +54,11 @@ def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
                          marker='o', linestyle='-',
                          label=f'Backend Time', 
                          alpha=0.7, color='#40456a')
-                plt.plot(front['front_id'],front['front_time'],
-                         marker='o', linestyle='-',
-                         label=f'Frontend Time',
-                         alpha=0.7, color='#f99d1b')
+                if include_front:
+                    plt.plot(front['front_id'],front['front_time'],
+                             marker='o', linestyle='-',
+                             label=f'Frontend Time',
+                             alpha=0.7, color='#f99d1b')
                 plt.title(f"Mean plot {op_name}")
                 plt.xlabel('System Time')
                 plt.ylabel('Request Time')
@@ -64,10 +69,14 @@ def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
                 box_df['id_qbin'] = box_df['id_qbin'].apply(
                         lambda x: f"{int(x.left)}–{int(x.right)}")
 
+                value_vars = ['back_time']
+                if include_front:
+                    value_vars =['front_time', 'back_time']
+
                 df_melted = pd.melt(
                     box_df,
                     id_vars='id_qbin',
-                    value_vars=['front_time', 'back_time'],
+                    value_vars= value_vars,
                     var_name='Stage',
                     value_name='Time'
                 )
@@ -91,7 +100,8 @@ def plot_graphs(df, place=".", strategy: str = "box", show=False, warmup=0):
             plt.savefig(f'plots/{place}/{op_name}.png')
         plt.close()
 
-def plot_comparison(df1, df1_name, df2, df2_name, place = ".", show=False):
+def plot_comparison(df1, df1_name, df2, df2_name, place = ".", 
+                    show=False, include_front=True, use_dag_ops=False):
     # Ensure the elapsed columns are numeric
     for df in [df1, df2]:
         df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
@@ -101,15 +111,16 @@ def plot_comparison(df1, df1_name, df2, df2_name, place = ".", show=False):
     os.makedirs(f"plots/{place}", exist_ok=True)
 
     # Get all unique operations from both DataFrames
-    all_operations = set(df1['client_operation'].unique()).union(df2['client_operation'].unique())
+    op_field = 'dag_operation' if use_dag_ops else 'client_operation'
+    all_operations = set(df1[op_field].unique()).union(df2[op_field].unique())
 
     for op_name in all_operations:
         op_name = op_name.strip()
         if op_name == "":
             continue
 
-        subset1 = df1[df1['client_operation'].str.strip() == op_name]
-        subset2 = df2[df2['client_operation'].str.strip() == op_name]
+        subset1 = df1[df1[op_field].str.strip() == op_name]
+        subset2 = df2[df2[op_field].str.strip() == op_name]
 
         # Pad the data to make them the same length for plotting
         back1 = subset1['back_time']
@@ -128,8 +139,9 @@ def plot_comparison(df1, df1_name, df2, df2_name, place = ".", show=False):
         plt.plot(range(len(back2)), back2, marker="o", label=f'{df2_name} - Backend Time', alpha=0.7, color='salmon')
 
         #plot frontend
-        plt.plot(range(len(front1)), front1, marker="o", label=f'{df1_name} - Frontend Time', alpha=0.7, color='deepskyblue')
-        plt.plot(range(len(front2)), front2, marker="o", label=f'{df2_name} - Frontend Time', alpha=0.7, color='orangered')
+        if include_front:
+            plt.plot(range(len(front1)), front1, marker="o", label=f'{df1_name} - Frontend Time', alpha=0.7, color='deepskyblue')
+            plt.plot(range(len(front2)), front2, marker="o", label=f'{df2_name} - Frontend Time', alpha=0.7, color='orangered')
 
         plt.title(f'Backend Time Comparison - {op_name}')
         plt.xlabel('Record Index')
