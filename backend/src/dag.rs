@@ -224,32 +224,9 @@ impl<O> MerkleDag<O>
     /// where $V$ is number of vertices of the graph and 
     /// $E$ the number of edges of the graph
     pub fn linearize(&self) -> Vec<Node<O>> {
-        let mut res = vec![];
-        let mut queue = VecDeque::new();
-
-        for pair in &self.heads {
-            let (_, node) = pair.pair();
-            queue.push_back(node.clone())
-        }
-
-        while let Some(node) = queue.pop_front() {
-            res.push((*node).clone());
-
-            for parent_hash in &node.parents {
-                if let Some(parent_node) = self.dag.get(parent_hash) {
-                    queue.push_back(parent_node.clone());
-                } 
-                else if !self.partial {
-                    error!("Linearization error: parent {:?} of node {:?} is not in dag", parent_hash, node.id);
-                }
-            }
-        }
-
-        if res.len() != self.dag.len() {
-            panic!("Cycle detected in the graph, linearization not possible");
-        }
-
-        return res;
+        self.topo.iter()
+            .map(|arc| Node::clone(&*arc))
+            .collect()
     }
 
     
