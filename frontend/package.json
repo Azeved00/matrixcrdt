@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "NODE_ENV=dev nodemon macro.js",
 
-    "micro": "node app.js",
-    "micro_stateless": "STATE_ENV=stateless node app.js",
+    "micro": "node app_automerge.js",
+    "micro_stateless": "STATE_ENV=stateless node app_automerge.js",
 
     "macro": "node macro_automerge.js",
     "macro_stateless": "STATE_ENV=stateless node macro.js"

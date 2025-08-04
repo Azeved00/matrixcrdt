@@ -2,95 +2,119 @@ import net      from "net";
 import express  from 'express';
 import path     from "path";
 import * as Automerge from "@automerge/automerge";
-import Message from "./src/message.js";
 import msgpack from "@msgpack/msgpack";
 
-const __dirname = path.resolve(path.dirname(''));
-let doc = Automerge.init(); 
-const socket = new net.Socket();
-const port = process.argv[2] || 3000;
-let clock = 0n;
+import * as SOCKET from "./src/socket.js";
+import * as ENV from './src/env.js';
 
+const __dirname = path.resolve(path.dirname(''));
+let [doc] = Automerge.applyChanges(Automerge.init(), ENV.automerge_baseStateChange);
+const app = express();
+const port = process.argv[2] || 3000;
+let counter = 0;
+let changes = [];
 
 // Set up express server
-const app = express();
+SOCKET.init(20076, "127.0.0.1", port)
 app.use(express.json());
 
-app.get('/', (_req, res) => {
-  res.sendFile(__dirname + '/pages/index.html');
-});
-
-// Get all key-value pairs
-app.get('/map', (_req, res) => {
-    const docv = JSON.stringify(doc);
-    console.log(docv);
-    res.json(docv);
-});
-
-// Get value by key
-app.get('/map/:key', (req, res) => {
-    const key = req.params.key;
-    if (doc.hasOwnProperty(key)) {
-        res.json({ key, value: doc[key] });
-    } else {
-        res.status(404).json({ error: 'Key not found' });
-    }
-});
-
-// Add or update key-value pair
-app.post('/map', (req, res) => {
-    const { key, value } = req.body;
-    if (!key || value === undefined) {
-        return res.status(400).json({ error: 'Key and value are required' });
-    }
-    doc = Automerge.change(doc, d => {
-        d[key] = value;
-    });
-    changes.push(Automerge.getLastLocalChange(doc));
-    res.json({ message: 'Entry added/updated', key, value });
-});
-
-// Delete a key-value pair
-app.delete('/map/:key', (req, res) => {
-    const key = req.params.key;
-    doc = Automerge.change(doc, d => {
-        delete d[key];
-    });
-    changes.push(Automerge.getLastLocalChange(doc));
-    res.json({ message: 'Entry deleted', key });
-});
-
-app.get('/save', (_req, res) => {
+app.get('/save', async function (req, res) {
     // Get all changes from the Automerge document
-    //console.log(changes.length)
+    if (ENV.debug){
+        console.log("/save request")
+    }
     const ser_changes = msgpack.encode(changes);
-    let message = new Message(0, clock, ser_changes);
-    msgProc.enqueueCounter(clock, (_data) => {
-        console.log("Saved Successfully");
-    });
-    clock += 1n;
-    socket.write(message.serialize());
+    const times = await SOCKET.save(ser_changes);
 
     changes = [];
     res.status(200).json();
 });
 
-app.get('/query', (_req, res) => {
-    let message = new Message(1, clock, "");
-    msgProc.enqueueCounter(clock, (data) => {
-        const jsonString = data.toString("utf-8");
-        const array = JSON.parse(jsonString);
+app.get('/query', async function (_req, res)  {
 
-        for (let ser_change of array) {
-            let change_array = msgpack.decode(ser_change);
-            [doc] = Automerge.applyChanges(doc, change_array);
-        }
-        console.log("Queried Changes(" + array.length + ") applied successfully");
+    if (ENV.debug){
+        console.log("/query request")
+    }
+
+    const times = await SOCKET.query((buffer) => {
+        let change_buffer = msgpack.decode(buffer);
+        console.log(changebuffer)
+        [doc] = Automerge.applyChanges(doc,change_buffer);
+        //console.log("after_changes", Automerge.toJS(doc));
     });
-    clock += 1n;
-    socket.write(message.serialize());
 
     res.status(200).json();
+});
+
+
+// Get all key-value pairs
+app.get('/map', (_req, res) => {
+    try{
+        const docv = JSON.stringify(doc);
+        console.log(docv);
+        res.json(docv);
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
+});
+
+// Get value by key
+app.get('/map/:key', (req, res) => {
+    try{
+        const key = req.params.key;
+
+        if (doc.hasOwnProperty(key)) {
+            res.json({ key, value: doc[key] });
+        } else {
+            res.status(404).json({ error: 'Key not found' });
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
+});
+
+// Add or update key-value pair
+app.post('/map', (req, res) => {
+    try{
+        if (ENV.debug){
+            console.log("POST /map request")
+        }
+
+        const { key, value } = req.body;
+        if (!key || value === undefined) {
+            return res.status(400).json({ error: 'Key and value are required' });
+        }
+        doc = Automerge.change(doc, d => {
+            d[key] = value;
+        });        
+        const change = Automerge.getLastLocalChange(doc);
+        changes.push(change);
+
+        res.json({ message: 'Entry added/updated', key, value });
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
+});
+
+// Delete a key-value pair
+app.delete('/map/:key', (req, res) => {
+    try{
+        const key = req.params.key;
+        doc = Automerge.change(doc, d => {
+            delete d[key];
+        });
+
+        const change = Automerge.getLastLocalChange(doc);
+        changes.push(change);
+
+        res.json({ message: 'Entry deleted', key });
+    } catch (err) {
+        console.log(err)
+        res.status(500).send({ error: err.toString() });
+    }
 });
 
 // Start the server

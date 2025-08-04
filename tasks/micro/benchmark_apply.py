@@ -40,7 +40,7 @@ def notify_user():
         print(f"⚠️ Notification failed: {e}")
 
 @task
-def run_benchmark(c, backend_bin, frontend_env="",
+def run_benchmark(c, backend_bin="socket", frontend_env="",
                   sample=1000, apply_n=5,
                   logs_dir="./logs/micro"):
     procs = []
@@ -72,7 +72,7 @@ def run_benchmark(c, backend_bin, frontend_env="",
                 for i in range(1, apply_n + 1):
                     requests.post("http://localhost:3001/map", headers=headers, 
                                   json={"key": "123", "value": i})
-                    requests.post("http://localhost:3001/save")
+                    requests.get("http://localhost:3001/save")
                 pbar.update(1)
 
     except subprocess.CalledProcessError as e:
