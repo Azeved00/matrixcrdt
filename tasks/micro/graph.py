@@ -11,7 +11,7 @@ import scripts.micro.graph as graph_utils
 #box graph
 @task
 def box_single(c, folder="logs/optimized", output_dir="plots", label="Optimized", group_percentage=0.05, sample_n=5,
-               save=True):
+               show=True):
     """ Plot a box plot."""
     files = graph_utils.list_files_in_folder(folder)
     dfs = [df for f in files if (df := graph_utils.load_csv(f)) is not None]
@@ -26,19 +26,17 @@ def box_single(c, folder="logs/optimized", output_dir="plots", label="Optimized"
     )
 
     for op,plt in plts.items():
-        if save:
-            os.makedirs(output_dir, exist_ok=True)
-            plt.savefig(f"{output_dir}/{label}-{op}.png")
-        else:
+        if show:
             plt.show()
+        os.makedirs(output_dir, exist_ok=True)
+        plt.savefig(f"{output_dir}/{label}-{op}.png")
         plt.close()
     
-
 @task
 def box_dual(c,
               folder1="data/optimized",label1="Optimized",
               folder2="data/baseline", label2="Baseline",
-              save=True, output_dir="plots",
+              show=True, output_dir="plots",
               group_percentage=0.05, sample_n=5):
     """ Plot a comparisson box plot."""
 
@@ -56,16 +54,15 @@ def box_dual(c,
         group_percentage=group_percentage,sample_n= sample_n,)
 
     for op,plt in plts.items():
-        if save:
-            os.makedirs(output_dir, exist_ok=True)
-            plt.savefig(f"{output_dir}/{label1}x{label2}-{op}.png")
-        else:
+        if show:
             plt.show()
+        os.makedirs(output_dir, exist_ok=True)
+        plt.savefig(f"{output_dir}/{label1}x{label2}-{op}.png")
         plt.close()
 
 #line graph
 @task
-def line_single(c, folder, save=False, sample_n=5, output_dir="plots"):
+def line_single(c, folder, show=False, sample_n=5, output_dir="plots"):
     """ Plot a line plot."""
     files = graph_utils.list_files_in_folder(folder)
     dfs = [df for file in files if (df := graph_utils.load_csv(file)) is not None]
@@ -75,18 +72,16 @@ def line_single(c, folder, save=False, sample_n=5, output_dir="plots"):
         return
 
     combined_df = pd.concat(dfs, ignore_index=True)
-    plts = plot_regression_single(combined_df, sample_n=int(sample_n),
-                           save_fig=bool(save), show_plot=bool(show))
+    plts = plot_regression_single(combined_df, sample_n=int(sample_n))
     for op,plt in plts.items():
-        if save:
-            os.makedirs(output_dir, exist_ok=True)
-            plt.savefig(f"{output_dir}/{label}-{op}.png")
-        else:
+        if show:
             plt.show()
+        os.makedirs(output_dir, exist_ok=True)
+        plt.savefig(f"{output_dir}/{label}-{op}.png")
         plt.close()
 
 @task
-def line_dual(c, label1, folder1, label2, folder2,save=False, sample_n=5, output_dir="plots"):
+def line_dual(c, label1, folder1, label2, folder2,show=False, sample_n=5, output_dir="plots"):
     """ Plot a comparisson line plot."""
     files1 = graph_utils.list_files_in_folder(folder1)
     files2 = graph_utils.list_files_in_folder(folder2)
@@ -98,11 +93,10 @@ def line_dual(c, label1, folder1, label2, folder2,save=False, sample_n=5, output
 
     plts = plot_regression_pair(dfs1, label1, dfs2, label2, sample_n=int(sample_n))
     for op,plt in plts.items():
-        if save:
-            os.makedirs(output_dir, exist_ok=True)
-            plt.savefig(f"{output_dir}/{label1}x{label2}-{op}.png")
-        else:
+        if show:
             plt.show()
+        os.makedirs(output_dir, exist_ok=True)
+        plt.savefig(f"{output_dir}/{label1}x{label2}-{op}.png")
         plt.close()
 
 # proces logs 

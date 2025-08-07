@@ -15,7 +15,7 @@ from .graph import box_single, line_single
 def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
                 benchmark="apply",  graph_type="box",
                 logs_dir="logs/micro/temp",
-                save=True, group_percentage=0.05, repetitions=5):
+                show=True, group_percentage=0.05, repetitions=5):
     """Default function to run benchmarks"""
 
     os.makedirs(logs_dir, exist_ok=True)
@@ -53,10 +53,10 @@ def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
     match graph_type:
         case "line":
             line_single(c, folder=logs_dir, output_dir=output_dir,
-                       save=save,sample_n=apply_n )
+                       show=show,sample_n=apply_n )
         case "box":
             box_single(c, folder=logs_dir, output_dir=output_dir,
-                       save=save, group_percentage=group_percentage, sample_n=apply_n)
+                       show=show, group_percentage=group_percentage, sample_n=apply_n)
 
     shutil.rmtree(temp_dir)
 
@@ -65,10 +65,10 @@ def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
 def make_benchmark_task(benchmark_name):
     @task
     @notify_on_finish
-    def benchmark_task(c, sample=2000, apply_n=5, graph_type="box", repetitions=5, save=True):
+    def benchmark_task(c, sample=2000, apply_n=5, graph_type="box", repetitions=5, show=True):
         return benchmark(c, sample=sample, apply_n=apply_n,
             graph_type=graph_type, benchmark=benchmark_name,
-            save=save, repetitions=repetitions, group_percentage=0.05, 
+            show=show, repetitions=repetitions, group_percentage=0.05, 
             output_dir=f"plots/micro/{benchmark_name}-{graph_type}-{repetitions}x{sample}x{apply_n}",
             logs_dir=f"logs/micro/{benchmark_name}-{graph_type}-{repetitions}x{sample}x{apply_n}"
         )

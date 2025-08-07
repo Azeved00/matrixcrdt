@@ -38,7 +38,10 @@ app.get('/query', async function (_req, res)  {
 
     const times = await SOCKET.query((buffer) => {
         let change_buffer = msgpack.decode(buffer);
-        console.log(changebuffer)
+        if (ENV.debug){
+            console.log("doc:", doc);
+            console.log("change_buffer:", change_buffer);
+        }
         [doc] = Automerge.applyChanges(doc,change_buffer);
         //console.log("after_changes", Automerge.toJS(doc));
     });
