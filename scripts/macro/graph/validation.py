@@ -79,15 +79,3 @@ def validate_df(df: pd.DataFrame, max_errors=10):
             expected_ids[thread_id] += 1
             expected_back_ids[thread_id] += 1
     return errors
-
-if __name__=="__main__":
-    file_path = 'final.csv'
-
-    df = pd.read_csv(file_path)
-    validation_errors = validate_df(df)
-
-    if validation_errors:
-        for err in validation_errors:
-            print(err)
-    else:
-        print("CSV passed all validation checks.")

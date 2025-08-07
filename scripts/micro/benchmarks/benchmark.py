@@ -25,23 +25,8 @@ def move_logs(logs_dir, pattern, prefix):
         dest = os.path.join(logs_dir, f"{prefix}_{name}.csv")
         shutil.move(file, dest)
 
-def notify_user():
-    try:
-        if shutil.which("notify-send"):
-            subprocess.run(["notify-send", "Benchmark Complete", "Your benchmark has finished."])
-        elif shutil.which("osascript"):
-            subprocess.run([
-                "osascript", "-e",
-                'display notification "Your benchmark has finished." with title "Benchmark Complete"'
-            ])
-        else:
-            print("📢 Notification not supported on this OS.")
-    except Exception as e:
-        print(f"⚠️ Notification failed: {e}")
-
-@task
 def run_benchmark(c, backend_bin="socket", frontend_env="",
-                  sample=1000, apply_n=5,
+                  sample=1000, apply_n=5, query=False,
                   logs_dir="./logs/micro"):
     procs = []
     try:
@@ -63,6 +48,17 @@ def run_benchmark(c, backend_bin="socket", frontend_env="",
         )
         procs.append(proc)
         wait_for_port(3001)
+        
+        if query:
+            env = os.environ.copy()
+            env["NODE_ENV"] = "bench"
+            env["STATE_ENV"] = frontend_env
+            proc = subprocess.Popen(
+                ["npm", "--prefix", "./frontend", "run", "micro", "3002"],
+                env=env
+            )
+            procs.append(proc)
+            wait_for_port(3002)
         time.sleep(1)
 
         print("🚀 Starting Requests...")
@@ -73,6 +69,8 @@ def run_benchmark(c, backend_bin="socket", frontend_env="",
                     requests.post("http://localhost:3001/map", headers=headers, 
                                   json={"key": "123", "value": i})
                     requests.get("http://localhost:3001/save")
+                if query:
+                    requests.get("http://localhost:3002/query",)
                 pbar.update(1)
 
     except subprocess.CalledProcessError as e:
@@ -94,5 +92,4 @@ def run_benchmark(c, backend_bin="socket", frontend_env="",
         move_logs(logs_dir, "./backend/*.csv", "back")
 
         print("✅ Benchmark complete.")
-        notify_user()
 

@@ -4,15 +4,16 @@ import matplotlib.pyplot as plt
 from .graph_utils import *
 import sys
 
-def plot_regression_single(df, n=5, save_fig=False, show_plot=True):
+def plot_regression_single(df, sample_n=5):
     """
     Plots regression for a single dataframe.
 
-    Args:
+    Input:
         df (pd.DataFrame): Combined DataFrame with 'id', 'time', and 'operation'.
-        n (int): X-axis multiplier for 'query' operations.
-        save_fig (bool): Whether to save the figure.
-        show_plot (bool): Whether to display the plot.
+        sample_n (int): X-axis multiplier for 'query' operations.
+
+    Output:
+        A dictionary of operations to plots
     """
     if 'id' not in df.columns or 'time' not in df.columns or 'operation' not in df.columns:
         print("Error: DataFrame must contain 'id', 'time', and 'operation' columns.")
@@ -20,6 +21,7 @@ def plot_regression_single(df, n=5, save_fig=False, show_plot=True):
 
     operations = sorted(df["operation"].unique())
 
+    final = {}
     for operation in operations:
         plt.figure(figsize=(15, 6))
         op_df = df[df["operation"] == operation].copy()
@@ -45,16 +47,26 @@ def plot_regression_single(df, n=5, save_fig=False, show_plot=True):
 
         if operation == "query":
             xticks = plt.xticks()[0][1:-1]
-            plt.xticks(xticks, labels=[f"{int(tick * n)}" for tick in xticks])
+            plt.xticks(xticks, labels=[f"{int(tick * samplen)}" for tick in xticks])
 
         plt.tight_layout()
+        finap[operation]=plt
+    return final
 
-        if save_fig:
-            plt.savefig(f"line_single_{operation}.png")
-        if show_plot:
-            plt.show()
+def plot_regression_dual(dataframes1, label1, dataframes2, label2, sample_n=5):
+    """
+    Plots regression for 2 dataframes.
 
-def plot_regression_dual(dataframes1, label1, dataframes2, label2, n=5, save_fig=False, show_plot=True):
+    Input:
+        dataframes1 (pd.DataFrame): Combined DataFrame with 'id', 'time', and 'operation'.
+        label1: label for the first dataframe
+        dataframes2 (pd.DataFrame): Combined DataFrame with 'id', 'time', and 'operation'.
+        label2: label for the second dataframe
+        sample_n (int): number of applies per 'query' operations.
+
+    Output:
+        A dictionary of operations to plots
+    """
     all_operations = set()
     for df in dataframes1 + dataframes2:
         if isinstance(df, pd.DataFrame) and 'operation' in df.columns:
@@ -62,6 +74,7 @@ def plot_regression_dual(dataframes1, label1, dataframes2, label2, n=5, save_fig
 
     all_operations = sorted(all_operations)
 
+    final = {}
     for operation in all_operations:
         plt.figure(figsize=(15, 6))
 
@@ -95,25 +108,8 @@ def plot_regression_dual(dataframes1, label1, dataframes2, label2, n=5, save_fig
         plt.grid(True, linestyle="--", alpha=0.7)
         if operation == "query":
             xticks = plt.xticks()[0][1:-1]
-            plt.xticks(xticks, labels=[f"{int(tick * n)}" for tick in xticks])
+            plt.xticks(xticks, labels=[f"{int(tick * sample_n)}" for tick in xticks])
         plt.tight_layout()
 
-        if save_fig:
-            plt.savefig(f"line_pair_{operation}.png")
-        if show_plot:
-            plt.show()
-
-if __name__ == "__main__":
-    version = int(sys.argv[1]) if len(sys.argv) > 1 else 2
-    dataset_sources = get_dataset_sources(version)
-
-    datasets = []
-    for source in dataset_sources:
-        folder = source["folder"]
-        files =list_files_in_folder(folder)
-        dfs = [df for file in files if (df := load_csv(file)) is not None]
-        source["dataframes"] = dfs
-        datasets.append(source)
-
-    plot_regression_single(datasets, version, n=5, save_fig=False, show_plot=True)
-
+        final[operation] = plt
+    return final

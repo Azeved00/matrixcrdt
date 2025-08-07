@@ -7,23 +7,10 @@ import glob
 import signal
 import sys
 
-from scripts.macro.workload import run_workload
-
-def wait_for_port(port, delay=0.1, timeout=60):
-    start = time.time()
-    while True:
-        result = subprocess.run(["netstat", "-an"], capture_output=True, text=True)
-        if f"LISTEN" in result.stdout and str(port) in result.stdout:
-            break
-        if time.time() - start > timeout:
-            raise TimeoutError(f"Port {port} did not open within {timeout} seconds")
-        time.sleep(delay)
-
-def move_logs(logs_dir, pattern, prefix):
-    for file in glob.glob(pattern):
-        name = os.path.splitext(os.path.basename(file))[0]
-        dest = os.path.join(logs_dir, f"{prefix}_{name}.csv")
-        shutil.move(file, dest)
+from scripts.macro.workload import run_benchmark
+from scripts.macro.graph import plot_graphs, merge_and_validate as merge, make_table
+from . import graph, benchmark
+from .benchmark import benchmark as run_benchmark
 
 def notify_user():
     try:
@@ -39,53 +26,42 @@ def notify_user():
     except Exception as e:
         print(f"⚠️ Notification failed: {e}")
 
-@task
-def run_benchmark(c, backend_bin, clients=2, operations=10000, logs_dir="./logs/default", frontend_env=""):
-    procs = []
-    try:
-        print(f"🔧 Starting backend binary: {backend_bin}")
-        backend = subprocess.Popen(
-            ["cargo", "run", "--manifest-path", "./backend/Cargo.toml", 
-             "--bin", backend_bin, "--features", "bench"]
-        )
-        procs.append(backend)
-        wait_for_port(20076)
 
-        print("🖥️ Starting frontends...")
-        for i in range(1, int(clients) + 1):
-            port = 3000 + i
-            env = os.environ.copy()
-            env["NODE_ENV"] = "bench"
-            env["STATE_ENV"] = frontend_env
-            proc = subprocess.Popen(
-                ["npm", "--prefix", "./frontend", "run", "macro", str(port)],
-                env=env
-            )
-            procs.append(proc)
-            wait_for_port(port)
+@task()
+def benchmark(c, name, clients, operations, 
+              workload_seed=76,
+              benchmark_logs_dir=None,
+              graph_strategy="mean", graph_warmup=0, graph_use_dag_ops=True,
+              table_latex=True, graph_output_dir="./plots", graph_save=True,
+              graph_include_dir=False):
+    """Default function to run benchmarks"""
 
-        time.sleep(1)
-        print("🚀 Starting workload script...")
-        run_workload(clients, operations)
+    if benchmark_logs_dir == None:
+        benchmark_logs_dir=f"./logs/macro/{name}/"
 
-    except subprocess.CalledProcessError as e:
-        print(f"❌ A subprocess failed: {e}")
-    except Exception as e:
-        print(f"❌ An unexpected error occurred: {e}")
-    finally:
-        print("🧹 Cleaning up processes...")
-        for proc in procs:
-            try:
-                proc.send_signal(signal.SIGTERM)
-            except Exception as e:
-                print(f"⚠️ Failed to terminate process: {e}")
+    print("🔧 Running benchmark...")
+    run_benchmark(
+        clients=clients,
+        operations=operations,
+        logs_dir=benchmark_logs_dir,
 
-        print("📦 Collecting logs...")
-        os.makedirs(logs_dir, exist_ok=True)
-        move_logs(logs_dir, "./*.csv", "script")
-        move_logs(logs_dir, "./frontend/src/*.csv", "front")
-        move_logs(logs_dir, "./backend/*.csv", "back")
+        backend_bin=
+                 "socket" if name != "authless" 
+            else "baseline" if name == "authless" 
+            else "matrix",
+        frontend_env= "stateless" if name == "stateless" else "",
+        seed=workload_seed,
+    )
 
-        print("✅ Benchmark complete.")
-        notify_user()
-
+    print("📈 Graphing results...")
+    df1 = merge(log_dir)
+    plts = plot_graphs(df1, strategy=graph_strategy,warmup=graph_warmup, use_dag_ops=graph_use_dag_ops, include_front=graph_include_front)
+    for op, plt in plts:
+        if graph_save:
+            plt.savefig(f'{graph_output_dir}/{args[0]}-{op_name}.png')
+        else:
+            plt.show()
+        plt.close()
+    print("Plots saved in 'plots' directory.")
+    make_table(df1, include_front=graph_include_front, latex=table_latex)
+    notify_user()

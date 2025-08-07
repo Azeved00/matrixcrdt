@@ -1,1 +1,1 @@
-from .main import run_workload
+from .main import run_benchmark

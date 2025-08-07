@@ -9,26 +9,34 @@ from .graph_utils import *
 
 width = 0.3
 
-def plot_boxplot_single(dataframes, group_percentage, save, n, label):
-    color = "lightblue"
-    all_operations = set()
-    for df in dataframes:
-        if isinstance(df, pd.DataFrame) and 'operation' in df.columns:
-            all_operations.update(df["operation"].unique())
-    all_operations = sorted(all_operations)
+def plot_boxplot_single(dataframe, group_percentage, sample_n):
+    """
+    Generates grouped box plots for each operation type from a single dataset.
 
+    Inputs:
+    dataframe : pandas.DataFrame
+        The input data containing 'id', 'time', and 'operation' columns.
+    group_percentage : float
+        Fraction (0 < value <= 1) representing the percentage of IDs per group.
+    sample_n : int
+        Number of samples per group (used for x-axis label formatting, especially for "query" operations).
+
+    Outputs: A dictionary from operation names to matplotlib plot object.
+    """
+    color = "lightblue"
+    all_operations = dataframe["operation"].unique()
+
+    final = {}
     for operation in all_operations:
         plt.figure(figsize=(14, 6))
         legend_handles = []
         base_positions = None
 
-        combined_df = pd.concat(dataframes, ignore_index=True)
-
-        if 'id' not in combined_df.columns or 'time' not in combined_df.columns or 'operation' not in combined_df.columns:
+        if 'id' not in dataframe.columns or 'time' not in dataframe.columns or 'operation' not in dataframe.columns:
             print(f"Error: DataFrames must contain 'id', 'time', and 'operation' columns.")
             return
 
-        filtered_df = combined_df[combined_df['operation'] == operation].copy()
+        filtered_df = dataframe[dataframe['operation'] == operation].copy()
         total_ids = len(filtered_df['id'].unique())
         group_size = max(1, int(total_ids * group_percentage))
 
@@ -45,12 +53,10 @@ def plot_boxplot_single(dataframes, group_percentage, save, n, label):
                     medianprops=dict(color='black'),
                     flierprops=dict(marker='o', markerfacecolor=color, markersize=6, linestyle='none'))
 
-        legend_handles.append(mpatches.Patch(color=color, label=label))
-
         # X-tick formatting
         if operation == "query":
             xticks = [f"{i*n}" for i in range(len(grouped_df))] if group_size == 1 else \
-                [textwrap.fill(f"{i*n*group_size}-{(i+1)*n*group_size}", 5) for i in range(len(grouped_df))]
+                [textwrap.fill(f"{i*sample_n*group_size}-{(i+1)*sample_n*group_size}", 5) for i in range(len(grouped_df))]
         else:
             xticks = [f"{i}" for i in range(len(grouped_df))] if group_size == 1 else \
                 [textwrap.fill(f"{i*group_size}-{(i+1)*group_size}", 5) for i in range(len(grouped_df))]
@@ -59,28 +65,44 @@ def plot_boxplot_single(dataframes, group_percentage, save, n, label):
         plt.xlabel("Operation Index (Grouped IDs)")
         plt.ylabel("Time (μs)")
         plt.title(f"Box Plot for Operation: {operation}")
-        plt.legend(handles=legend_handles, loc="upper left")
         plt.tight_layout(pad=3)
+        
+        final[operation] = plt
+    return final
 
-        if save:
-            plt.savefig(f"single_boxplot_{operation}.png")
-        else:
-            plt.show()
-        plt.close()
+def plot_boxplot_dual(df1, df2, label1, label2, group_percentage,sample_n):
+    """
+    Creates side-by-side box plots to compare two datasets for each operation type.
 
-def plot_boxplot_dual(df_group1, df_group2, label1, label2, group_percentage, save, n):
+    Each plot shows grouped execution times for both datasets, allowing direct visual comparison
+    across identical operation categories.
+
+    Inputs
+    df1 : pandas.DataFrame
+        First dataset containing 'id', 'time', and 'operation' columns.
+    df2 : pandas.DataFrame
+        Second dataset, structured the same as df1.
+    label1 : str
+        Label for the first dataset to be shown in the plot legend.
+    label2 : str
+        Label for the second dataset.
+    group_percentage : float
+        Fraction (0 < value <= 1) representing the percentage of IDs per group for each dataset.
+    sample_n : int
+        Number of samples per group (used for x-axis label formatting, especially for "query" operations).
+
+    Outputs: A dictionary from operation names to matplotlib plot object.
+    """
     datasets = [
-        {"label": label1, "dfs": df_group1, "color": "lightblue"},
-        {"label": label2, "dfs": df_group2, "color": "lightcoral"}
+        {"label": label1, "dfs": df1, "color": "lightblue"},
+        {"label": label2, "dfs": df2, "color": "lightcoral"}
     ]
 
     all_operations = set()
     for ds in datasets:
-        for df in ds["dfs"]:
-            if isinstance(df, pd.DataFrame) and 'operation' in df.columns:
-                all_operations.update(df["operation"].unique())
-    all_operations = sorted(all_operations)
+            all_operations.update(ds["dfs"]["operation"].unique())
 
+    final ={}
     for operation in all_operations:
         plt.figure(figsize=(14, 6))
         legend_handles = []
@@ -88,13 +110,12 @@ def plot_boxplot_dual(df_group1, df_group2, label1, label2, group_percentage, sa
 
         for idx, ds in enumerate(datasets):
             label, dfs, color = ds["label"], ds["dfs"], ds["color"]
-            combined_df = pd.concat(dfs, ignore_index=True)
 
-            if 'id' not in combined_df.columns or 'time' not in combined_df.columns or 'operation' not in combined_df.columns:
+            if 'id' not in dfs.columns or 'time' not in dfs.columns or  'operation' not in dfs.columns:
                 print(f"Error: DataFrames in '{label}' must contain 'id', 'time', and 'operation'.")
                 return
 
-            filtered_df = combined_df[combined_df['operation'] == operation].copy()
+            filtered_df = dfs[dfs['operation'] == operation].copy()
             total_ids = len(filtered_df['id'].unique())
             group_size = max(1, int(total_ids * group_percentage))
 
@@ -131,36 +152,7 @@ def plot_boxplot_dual(df_group1, df_group2, label1, label2, group_percentage, sa
         plt.title(f"Box Plot Comparison for Operation: {operation}")
         plt.legend(handles=legend_handles, loc="upper left")
         plt.tight_layout(pad=3)
-
-        if save:
-            plt.savefig(f"dual_boxplot_{operation}.png")
-        else:
-            plt.show()
-        plt.close()
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Plot single or dual benchmark boxplots.")
-    parser.add_argument("folders", nargs="+", help="Folder(s) containing CSVs. One for single, two for dual.")
-    parser.add_argument("--labels", nargs="+", default=["Dataset A", "Dataset B"], help="Labels for the datasets.")
-    parser.add_argument("--save", action="store_true", help="Save the plot instead of displaying it.")
-    parser.add_argument("--group-percentage", type=float, default=0.05, help="Percentage of IDs per group.")
-    parser.add_argument("-n", type=int, default=5, help="Scaling multiplier for query buckets.")
-
-    args = parser.parse_args()
-    folders = args.folders
-
-    if len(folders) == 1:
-        files = graph_utils.list_files_in_folder(folders[0])
-        dfs = [df for f in files if (df := graph_utils.load_csv(f)) is not None]
-        plot_boxplot_single(dfs, group_percentage=args.group_percentage, save=args.save, n=args.n, label=args.labels[0])
-    elif len(folders) == 2:
-        files1 = graph_utils.list_files_in_folder(folders[0])
-        files2 = graph_utils.list_files_in_folder(folders[1])
-        dfs1 = [df for f in files1 if (df := graph_utils.load_csv(f)) is not None]
-        dfs2 = [df for f in files2 if (df := graph_utils.load_csv(f)) is not None]
-        plot_boxplot_dual(dfs1, dfs2, args.labels[0], args.labels[1], group_percentage=args.group_percentage, save=args.save, n=args.n)
-    else:
-        print("Error: Please specify one or two folders.")
+        
+        final[operation] = plt
+    return final
 

@@ -1,6 +1,7 @@
 from invoke import task
 from invoke import Collection
 import pandas as pd
+import os
 
 from scripts.micro.graph.box_graph import plot_boxplot_single, plot_boxplot_dual
 from scripts.micro.graph.line_graph import plot_regression_single, plot_regression_dual
@@ -9,43 +10,63 @@ import scripts.micro.graph as graph_utils
 
 #box graph
 @task
-def box_single(c, folder="logs/optimized", label="Optimized", save=True, group_percentage=0.05, n=5):
+def box_single(c, folder="logs/optimized", output_dir="plots", label="Optimized", group_percentage=0.05, sample_n=5,
+               save=True):
+    """ Plot a box plot."""
     files = graph_utils.list_files_in_folder(folder)
     dfs = [df for f in files if (df := graph_utils.load_csv(f)) is not None]
-    plot_boxplot_single(
-        dataframes=dfs,
+
+    print(f"{len(dfs)} dataframes loaded")
+    combined_df = pd.concat(dfs, ignore_index=True)
+
+    plts = plot_boxplot_single(
+        dataframe=combined_df,
         group_percentage=group_percentage,
-        save=save,
-        n=n,
-        label=label
+        sample_n=sample_n,
     )
+
+    for op,plt in plts.items():
+        if save:
+            os.makedirs(output_dir, exist_ok=True)
+            plt.savefig(f"{output_dir}/{label}-{op}.png")
+        else:
+            plt.show()
+        plt.close()
+    
 
 @task
 def box_dual(c,
-              folder1="data/optimized",
-              folder2="data/baseline",
-              label1="Optimized",
-              label2="Baseline",
-              save=True,
-              group_percentage=0.05,
-              n=5):
+              folder1="data/optimized",label1="Optimized",
+              folder2="data/baseline", label2="Baseline",
+              save=True, output_dir="plots",
+              group_percentage=0.05, sample_n=5):
+    """ Plot a comparisson box plot."""
+
     files1 = graph_utils.list_files_in_folder(folder1)
     dfs1 = [df for f in files1 if (df := graph_utils.load_csv(f)) is not None]
+    combined_df1 = pd.concat(dfs1, ignore_index=True)
 
     files2 = graph_utils.list_files_in_folder(folder2)
     dfs2 = [df for f in files2 if (df := graph_utils.load_csv(f)) is not None]
+    combined_df2 = pd.concat(dfs2, ignore_index=True)
 
-    plot_boxplot_dual(
-        df_group1=dfs1,
-        df_group2=dfs2,
-        label1=label1,
-        label2=label2,
-        group_percentage=group_percentage,
-        save=save, n=n)
+    plts = plot_boxplot_dual(
+        df1=combined_df1, label1=label1,
+        df2=combined_df2, label2=label2,
+        group_percentage=group_percentage,sample_n= sample_n,)
+
+    for op,plt in plts.items():
+        if save:
+            os.makedirs(output_dir, exist_ok=True)
+            plt.savefig(f"{output_dir}/{label1}x{label2}-{op}.png")
+        else:
+            plt.show()
+        plt.close()
 
 #line graph
 @task
-def line_single(c, folder, n=5, save=False, show=True):
+def line_single(c, folder, save=False, sample_n=5, output_dir="plots"):
+    """ Plot a line plot."""
     files = graph_utils.list_files_in_folder(folder)
     dfs = [df for file in files if (df := graph_utils.load_csv(file)) is not None]
 
@@ -54,17 +75,35 @@ def line_single(c, folder, n=5, save=False, show=True):
         return
 
     combined_df = pd.concat(dfs, ignore_index=True)
-    plot_regression_single(combined_df, n=int(n), save_fig=bool(save), show_plot=bool(show))
+    plts = plot_regression_single(combined_df, sample_n=int(sample_n),
+                           save_fig=bool(save), show_plot=bool(show))
+    for op,plt in plts.items():
+        if save:
+            os.makedirs(output_dir, exist_ok=True)
+            plt.savefig(f"{output_dir}/{label}-{op}.png")
+        else:
+            plt.show()
+        plt.close()
 
 @task
-def line_dual(c, label1, folder1, label2, folder2, n=5, save=False, show=True):
+def line_dual(c, label1, folder1, label2, folder2,save=False, sample_n=5, output_dir="plots"):
+    """ Plot a comparisson line plot."""
     files1 = graph_utils.list_files_in_folder(folder1)
     files2 = graph_utils.list_files_in_folder(folder2)
 
     dfs1 = [df for file in files1 if (df := graph_utils.load_csv(file)) is not None]
     dfs2 = [df for file in files2 if (df := graph_utils.load_csv(file)) is not None]
+    combined_df1 = pd.concat(dfs1, ignore_index=True)
+    combined_df2 = pd.concat(dfs2, ignore_index=True)
 
-    plot_regression_pair(dfs1, label1, dfs2, label2, n=int(n), save_fig=bool(save), show_plot=bool(show))
+    plts = plot_regression_pair(dfs1, label1, dfs2, label2, sample_n=int(sample_n))
+    for op,plt in plts.items():
+        if save:
+            os.makedirs(output_dir, exist_ok=True)
+            plt.savefig(f"{output_dir}/{label1}x{label2}-{op}.png")
+        else:
+            plt.show()
+        plt.close()
 
 # proces logs 
 ns = Collection()

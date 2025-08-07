@@ -94,33 +94,28 @@ def print_summary(df_summary, n_parts):
     print("-" * (sum(col_widths) + 3 * len(col_headers) + 1))
 
 
-def make_table(df, include_front=True, latex=False, table=False):
-    parts = 4
+def make_table(df, parts=4, include_front=True, latex=False):
+    """
+    Creates a summary table with n parts, each part having the columns 
+    mean, 95% interval and standard deviation. 
+    The table has a row per operation.
+
+    Inputs:
+        - parts, the number of parts of the table, defaults to 4,
+        - include_front, weather to include the frontend data, defaults to True,
+        - latex, weather the table should be in latex
+
+    Outputs: The table to standard output
+    """
     summary = make_back_summary(df, parts)
 
     if latex:
         latex_table = make_latex_table(summary, parts)
         print(latex_table)
-    elif table:
-        print_summary(summary, parts)
     else:
-        print(summary)
+        print_summary(summary, parts)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Summarize operation stats from a CSV file.")
-    parser.add_argument("csv_file", help="Path to the input CSV file.")
-    parser.add_argument(
-        "-f", "--no-front",
-        action="store_true",
-        help="Exclude front_time statistics from the summary."
-    )
+def make_summary(df, include_front=True):
+    summary = make_back_summary(df, parts)
+    print(summary)
 
-    parser.add_argument(
-        "--latex",
-        action="store_true",
-        help="Output table as latex."
-    )
-
-    args = parser.parse_args()
-    df = pd.read_csv(args.csv_file)
-    make_table(df, include_front= not args.no_front, latex=args.latex, table=True)

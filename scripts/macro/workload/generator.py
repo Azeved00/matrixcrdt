@@ -182,25 +182,3 @@ def gen_workload(id, number, rng=None):
         counter+=1
         bar.update(1)
     bar.close()
-
-if __name__ == "__main__":
-    match_operation = make_prescription_state(INITIAL_STATE_SIZE, 0)
-
-    while True:
-        print("Available Operations:")
-        ops = list(OPERATIONS.keys())
-        for i, key in enumerate(ops):
-            print(f"{i+1}. {OPERATIONS[key]['name']}")
-
-        try:
-            choice = int(input("Choose an operation (1-9): "))
-            if choice == 0:
-                print("Exiting");
-                break
-            op_key = ops[choice - 1]
-        except (ValueError, IndexError):
-            print("Invalid choice.")
-            sys.exit(1)
-
-
-        match_operation(op=op_key)

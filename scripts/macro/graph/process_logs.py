@@ -1,9 +1,6 @@
 import pandas as pd
 import os
 import sys
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-import math
 
 def get_files_number(folder_path):
     return len([
@@ -37,32 +34,6 @@ def merge_triples(triple_list):
 
     return df_list
 
-def plot_data(df):
-    operations = sorted(df['operation_name'].unique())
-
-    rows = cols = 3
-    fig, axes = plt.subplots(3, 3, figsize=(15, 12))
-
-    for idx, op in enumerate(operations):
-        r, c = divmod(idx, cols)
-        ax = axes[r][c]
-
-        subset = df[df['operation_name'] == op]
-        ax.plot(subset['id'], subset['elapsed'], marker='o')
-        ax.set_title(f'Op: {op}')
-
-        #ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
-        #ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
-
-        if r == rows - 1:
-            ax.set_xlabel("ID")
-        if c == 0:
-            ax.set_ylabel("Time")
-
-    plt.tight_layout()
-    plt.suptitle("Operation Times by ID (Per Prescription)", fontsize=16, y=1.02)
-    plt.show()
-
 def merge_files(input_path):
     client_num = get_files_number(input_path)//3
     file_triples = calculate_files(input_path, client_num)
@@ -87,13 +58,3 @@ def merge_files(input_path):
 
     return df
 
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <path>")
-        sys.exit(1)
-
-    input_path = sys.argv[1]
-    merged = merge_files(input_path)
-    print(merged.head())
-    merged.to_csv(f"final.csv", index=False)

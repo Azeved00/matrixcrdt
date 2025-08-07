@@ -5,9 +5,21 @@ import os
 import seaborn as sns
 
 
-def plot_graphs(df, place=".", strategy: str = "box", 
-                warmup=0,
-                show=False, include_front=True, use_dag_ops=False):
+def plot_graphs(df,strategy: str = "box", warmup=0,  include_front=True, use_dag_ops=False):
+    """
+    Plots benchmarking data using the specified visualization strategy.
+
+    Args:
+        df (pd.DataFrame): The benchmarking data.
+        strategy (str): Visualization strategy to use. Options are:
+                        "scatter", "mean", or "box".
+        warmup (int): Number of initial entries to skip (for warm-up period).
+        include_front (bool): Whether to include frontend times in plots.
+        use_dag_ops (bool): If True, use 'dag_operation' column instead of 'client_operation'.
+
+    Outputs:
+        A dictionary from operations to matplotlib plots.
+    """
     df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
     df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
     df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')  
@@ -18,10 +30,8 @@ def plot_graphs(df, place=".", strategy: str = "box",
     if warmup > 0 and len(df) > warmup:
         df = df.iloc[warmup:]
 
-
-    os.makedirs(f"plots/{place}", exist_ok=True)
-
     # Plot for each unique operation_name_script
+    final = {}
     op_field = 'dag_operation' if use_dag_ops else 'client_operation'
     for op_name_x in df[op_field].unique():
         op_name = op_name_x.strip()
@@ -93,24 +103,33 @@ def plot_graphs(df, place=".", strategy: str = "box",
 
         plt.legend()
         plt.tight_layout()
+        final[op_name] = plt
+    return final
         
-        if show:
-            plt.show()
-        else:
-            plt.savefig(f'plots/{place}/{op_name}.png')
-        plt.close()
 
-def plot_comparison(df1, df1_name, df2, df2_name, place = ".", 
-                    show=False, include_front=True, use_dag_ops=False):
+def plot_comparison(df1, df1_name, df2, df2_name, include_front=True, use_dag_ops=False):
+    """
+    Compares two benchmarking runs by plotting their frontend and backend times.
+
+    Args:
+        df1 (pd.DataFrame): First benchmarking dataset.
+        df1_name (str): Label for the first dataset.
+        df2 (pd.DataFrame): Second benchmarking dataset.
+        df2_name (str): Label for the second dataset.
+        include_front (bool): Whether to include frontend times in comparison.
+        use_dag_ops (bool): If True, use 'dag_operation' column instead of 'client_operation'.
+
+    Outputs:
+        A dictionary from operation to plot.
+    """
     # Ensure the elapsed columns are numeric
     for df in [df1, df2]:
         df['total_time'] = pd.to_numeric(df['total_time'], errors='coerce')
         df['front_time'] = pd.to_numeric(df['front_time'], errors='coerce')
         df['back_time'] = pd.to_numeric(df['back_time'], errors='coerce')
 
-    os.makedirs(f"plots/{place}", exist_ok=True)
-
     # Get all unique operations from both DataFrames
+    final = {}
     op_field = 'dag_operation' if use_dag_ops else 'client_operation'
     all_operations = set(df1[op_field].unique()).union(df2[op_field].unique())
 
@@ -148,35 +167,6 @@ def plot_comparison(df1, df1_name, df2, df2_name, place = ".",
         plt.ylabel('Backend Time')
         plt.legend()
         plt.tight_layout()
-
-        if show:
-            plt.show()
-        else:
-            plt.savefig(f'plots/{place}/{op_name}.png')
-        plt.close()
-
-if __name__=="__main__":
-    args=sys.argv[1:]
-    if len(args) < 1 or len(args) > 2:
-        print("Usage: provide 1 or 2 parameters")
-        sys.exit(1)
-
-    df1 = []
-    df2 = []
-    if len(args) >= 1:
-        path = f"{args[0]}_final.csv"
-        df1 = pd.read_csv(path, na_filter=False)
-        print(df1.head())
-
-    if len(args) >= 2:
-        path = f"{args[1]}_final.csv"
-        df2 = pd.read_csv(path, na_filter=False)
-        print(df2.head())
-
-    if len(args) == 1:
-        plot_graphs(df1, args[0])
-        print("Plots saved in 'plots' directory.")
-    else:
-        plot_comparison(df1,args[0],df2,args[1], f"{args[0]}x{args[1]}")
-        print("Plots saved in 'plots' directory.")
+        final[op_name] = plt
+    return final
 
