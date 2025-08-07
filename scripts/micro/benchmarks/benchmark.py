@@ -26,7 +26,7 @@ def move_logs(logs_dir, pattern, prefix):
         shutil.move(file, dest)
 
 def run_benchmark(c, backend_bin="socket", frontend_env="",
-                  sample=1000, apply_n=5, query=False,
+                  sample=1000, apply_n=5, query=True,
                   logs_dir="./logs/micro"):
     procs = []
     try:
