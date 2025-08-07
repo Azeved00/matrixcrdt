@@ -1,7 +1,8 @@
 import express  from 'express';
 import * as Automerge from "@automerge/automerge";
-import * as SOCKET from "./src/socket.js";
 import msgpack from "@msgpack/msgpack";
+
+import * as SOCKET from "./src/socket.js";
 import { Logger } from './src/logger.js';
 import * as ENV from './src/env.js';
 

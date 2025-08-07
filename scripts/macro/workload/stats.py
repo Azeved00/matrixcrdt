@@ -73,7 +73,7 @@ OPERATIONS = {
     'get_patient':{
       "index": 7,
       "name": 'get_patient', 
-      "prob": 0.05,
+      "prob": 0.04,
       "params": ['patient'],
       "req": "get",
       "path":"/patient/{patient}",
