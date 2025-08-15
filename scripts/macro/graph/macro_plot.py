@@ -4,6 +4,8 @@ import sys
 import os
 import seaborn as sns
 
+strategies = ["scatter", "box", "mean"]
+
 
 def plot_graphs(df,strategy: str = "box", warmup=0,  include_front=True, use_dag_ops=False):
     """

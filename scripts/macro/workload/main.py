@@ -1,10 +1,15 @@
 import sys
+import glob
+import subprocess
 import threading
 import random
 import logging
 import argparse
 import numpy as np
 import time
+import signal
+import os
+import shutil
 
 
 from .generator import gen_workload
@@ -95,6 +100,9 @@ def run_benchmark(backend_bin, clients=2, operations=10000, logs_dir="./logs/def
         print("🚀 Starting workload script...")
         run_workload(clients, operations, seed)
 
+
+    except KeyboardInterrupt:
+        print("⚠️ Interrupted by user (Ctrl+C)")
     except subprocess.CalledProcessError as e:
         print(f"❌ A subprocess failed: {e}")
     except Exception as e:

@@ -8,10 +8,8 @@ from .graph import box_single, line_single
 
 
 
-
-
 @task 
-@notify_on_finish
+@notify_on_finish("Benchmark", "Finished running the benchmark")
 def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
                 benchmark="apply",  graph_type="box",
                 logs_dir="logs/micro/temp",
@@ -21,7 +19,8 @@ def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
     os.makedirs(logs_dir, exist_ok=True)
     temp_dir="temp12345"
     os.makedirs(temp_dir, exist_ok=True)
-
+    
+    print("Starting Benchmark")
     for i in range(repetitions):
         match benchmark:
             case "authdag":
@@ -50,6 +49,7 @@ def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
 
             shutil.move(src_path, dest_path)
 
+    print("Printing Graphs")
     match graph_type:
         case "line":
             line_single(c, folder=logs_dir, output_dir=output_dir,
@@ -64,13 +64,13 @@ def benchmark(c, sample=2000, apply_n=5, output_dir="plots/micro",
 
 def make_benchmark_task(benchmark_name):
     @task
-    @notify_on_finish
-    def benchmark_task(c, sample=2000, apply_n=5, graph_type="box", repetitions=5, show=True):
+    @notify_on_finish("Benchmark", "Finished running the benchmark")
+    def benchmark_task(c, sample=2000, apply_n=5, graph_type="box", repetitions=5, show=False):
         return benchmark(c, sample=sample, apply_n=apply_n,
             graph_type=graph_type, benchmark=benchmark_name,
             show=show, repetitions=repetitions, group_percentage=0.05, 
             output_dir=f"plots/micro/{benchmark_name}-{graph_type}-{repetitions}x{sample}x{apply_n}",
-            logs_dir=f"logs/micro/{benchmark_name}-{graph_type}-{repetitions}x{sample}x{apply_n}"
+            logs_dir=f"logs/micro/{benchmark_name}-{repetitions}x{sample}x{apply_n}"
         )
 
     benchmark_task.__doc__ = f"Run benchmark {benchmark_name}"

@@ -11,7 +11,7 @@ def get_files_number(folder_path):
 def calculate_files(path, n):
     files=[]
     for i in range(1,n+1):
-        files.append([f'{path}script_log_{i}.csv',f'{path}front_log_{3000+i}.csv',f'{path}back_log_{5000+i}.csv'])
+        files.append([f'{path}/script_log_{i}.csv',f'{path}/front_log_{3000+i}.csv',f'{path}/back_log_{5000+i}.csv'])
     return files
 
 def merge_triples(triple_list):

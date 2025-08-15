@@ -1,67 +1,91 @@
 from invoke import task
-import subprocess
-import time
 import os
 import shutil
-import glob
-import signal
-import sys
+import pandas as pd
 
+from tasks.utils import notify_on_finish
 from scripts.macro.workload import run_benchmark
-from scripts.macro.graph import plot_graphs, merge_and_validate as merge, make_table
-from . import graph, benchmark
-from .benchmark import benchmark as run_benchmark
-
-def notify_user():
-    try:
-        if shutil.which("notify-send"):
-            subprocess.run(["notify-send", "Benchmark Complete", "Your benchmark has finished."])
-        elif shutil.which("osascript"):
-            subprocess.run([
-                "osascript", "-e",
-                'display notification "Your benchmark has finished." with title "Benchmark Complete"'
-            ])
-        else:
-            print("📢 Notification not supported on this OS.")
-    except Exception as e:
-        print(f"⚠️ Notification failed: {e}")
-
+from scripts.macro.graph import plot_graphs, merge_and_validate as merge, make_table, strategies
 
 @task()
+@notify_on_finish("Benchmark Finished", "Benchmark Finished")
 def benchmark(c, name, clients, operations, 
-              workload_seed=76,
-              benchmark_logs_dir=None,
-              graph_strategy="mean", graph_warmup=0, graph_use_dag_ops=True,
-              table_latex=True, graph_output_dir="./plots", graph_save=True,
-              graph_include_dir=False):
+              workload_seed=76, repetitions=1,
+              benchmark_logs_dir="./logs/macro/temp",
+              graph_strategy="all", graph_warmup=0, graph_use_dag_ops=True,
+              table_latex=True, graph_output_dir="./plots", graph_show=True,
+              graph_include_front=False):
     """Default function to run benchmarks"""
 
-    if benchmark_logs_dir == None:
-        benchmark_logs_dir=f"./logs/macro/{name}/"
+    os.makedirs(benchmark_logs_dir, exist_ok=True)
+    os.makedirs(graph_output_dir, exist_ok=True)
+    temp_dir="tempm12345"
+    os.makedirs(temp_dir, exist_ok=True)
+    df_list=[]
 
-    print("🔧 Running benchmark...")
-    run_benchmark(
-        clients=clients,
-        operations=operations,
-        logs_dir=benchmark_logs_dir,
+    for i in range(repetitions):
+        print("🔧 Running benchmark...")
+        match name:
+            case "authdag":
+                run_benchmark(
+                    clients=clients, operations=operations,
+                    backend_bin="socket", frontend_env= "",
+                    logs_dir=temp_dir,
+                    seed=workload_seed,
+                )
+            case "authless":
+                run_benchmark(
+                    clients=clients, operations=operations,
+                    backend_bin="baseline", frontend_env= "",
+                    logs_dir=temp_dir,
+                    seed=workload_seed,
+                )
+            case "stateless":
+                run_benchmark(
+                    clients=clients, operations=operations,
+                    backend_bin="socket", frontend_env= "stateless",
+                    logs_dir=temp_dir,
+                    seed=workload_seed,
+                )
+            case "matrix":
+                run_benchmark(
+                    clients=clients, operations=operations,
+                    backend_bin="matrix", frontend_env= "",
+                    logs_dir=temp_dir,
+                    seed=workload_seed,
+                )
 
-        backend_bin=
-                 "socket" if name != "authless" 
-            else "baseline" if name == "authless" 
-            else "matrix",
-        frontend_env= "stateless" if name == "stateless" else "",
-        seed=workload_seed,
-    )
 
+        df1 = merge(temp_dir)
+        df_list.append(df1)
+        shutil.move(temp_dir, f"{benchmark_logs_dir}/run_{i}")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+
+    full_df = pd.concat(df_list, ignore_index=True)
     print("📈 Graphing results...")
-    df1 = merge(log_dir)
-    plts = plot_graphs(df1, strategy=graph_strategy,warmup=graph_warmup, use_dag_ops=graph_use_dag_ops, include_front=graph_include_front)
-    for op, plt in plts:
-        if graph_save:
-            plt.savefig(f'{graph_output_dir}/{args[0]}-{op_name}.png')
-        else:
-            plt.show()
-        plt.close()
+    if graph_strategy == "all":
+        for t in strategies:
+            print(f"For strategy {t}...")
+            plots = plot_graphs(full_df, strategy=t, warmup=graph_warmup, 
+                        include_front=graph_include_front, use_dag_ops=graph_use_dag_ops)
+
+            for op_name, plt in plots.items():
+                if graph_show:
+                    plt.show()
+                plt.savefig(f'{graph_output_dir}/{name}-{t}-{op_name}.png')
+                plt.close()
+    else:
+        plots = plot_graphs(df_list, strategy=graph_strategy, warmup=graph_warmup, 
+                            include_front=graph_include_front, use_dag_ops=graph_use_dag_ops)
+
+        for op_name, plt in plots.items():
+            if graph_show:
+                plt.show()
+            plt.savefig(f'{graph_output_dir}/{name}-{op_name}.png')
+            plt.close()
+
     print("Plots saved in 'plots' directory.")
-    make_table(df1, include_front=graph_include_front, latex=table_latex)
-    notify_user()
+    make_table(full_df, include_front=graph_include_front, latex=table_latex)
+
+    shutil.rmtree(temp_dir)

@@ -1,23 +1,28 @@
 from invoke import task, Collection
 
 from .benchmark import benchmark as run_benchmark
+from tasks.utils import notify_on_finish
+
 def make_benchmark_task(benchmark_name, benchmark_type, clients, operations):
-    @task()
+    @task
+    @notify_on_finish("Benchmark Finished",f"Macro Benchmark {benchmark_name} just finished.")
     def benchmark_task(c,
             name=benchmark_name, clients=clients, operations=operations, 
-            workload_seed=None, benchmark_logs_dir=None,
-            graph_strategy="mean", graph_warmup=0, graph_use_dag_ops=True,
-            table_latex=True, graph_output_dir="./plots", graph_save=True,
-            graph_include_dir=False):
-        return benchmark(
+            workload_seed=None,
+            graph_strategy="all", graph_warmup=0, graph_use_dag_ops=True,
+            table_latex=True, graph_show=False,
+            repetitions=5, graph_include_front=False):
+        return run_benchmark(c,
             name=name, clients=clients, operations=operations, 
-            workload_seed=workload_seed, benchmark_logs_dir=benchmark_logs_dir,
+            workload_seed=workload_seed, 
+            benchmark_logs_dir=f"logs/macro/{benchmark_name}-r{repetitions}xc{clients}xo{operations}",
             graph_strategy=graph_strategy, graph_warmup=graph_warmup,
-            graph_use_dag_ops=graph_use_dag_ops,
-            table_latex=table_latex, graph_output_dir=graph_output_dir,
-            graph_save=graph_save,graph_include_dir=graph_include_dir
+            graph_use_dag_ops=graph_use_dag_ops, repetitions=repetitions,
+            table_latex=table_latex, 
+            graph_output_dir=f"plots/macro/{benchmark_name}-{graph_strategy}-r{repetitions}xc{clients}xo{operations}",
+            graph_show=graph_show,graph_include_front=graph_include_front
         )
-    benchmark_task.__doc__ = f"Run {benchmark_name} {benchmark_type} benchmark"
+    benchmark_task.__doc__ = f"Run {benchmark_type} {benchmark_name} benchmark"
     return benchmark_task
 
 

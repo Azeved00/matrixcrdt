@@ -1,6 +1,6 @@
 from .process_logs import merge_files 
 from .validation import validate_df
-from .macro_plot import plot_graphs, plot_comparison
+from .macro_plot import plot_graphs, plot_comparison, strategies
 from .tables import make_table
 
 def merge_and_validate(input_path):
