@@ -9,7 +9,8 @@ from .graph_utils import *
 
 WIDTH = 0.3
 
-def plot_single(dataframe, group_percentage, sample_n, strategy, color="lightblue"):
+def plot_single(dataframe, group_percentage, sample_n, strategy, 
+                color="lightblue", remove_outliers=0):
     """
     Generates grouped box plots for each operation type from a single dataset.
 
@@ -25,18 +26,24 @@ def plot_single(dataframe, group_percentage, sample_n, strategy, color="lightblu
         fig, ax = plt.subplots(figsize=(14, 6))  
 
         filtered_df = dataframe[dataframe['operation'] == operation].copy()
-        total_ids = len(filtered_df['id'].unique())
-        group_size = max(1, int(total_ids * group_percentage))
-
-        filtered_df['group'] = filtered_df['id'] // group_size
-        grouped_df = [group for _, group in filtered_df.groupby('group')]
-
-        data_to_plot = [group['time'] for group in grouped_df]
-        base_positions = np.arange(len(grouped_df)) + 1
-
+        if remove_outliers > 0 and len(filtered_df) > remove_outliers:
+            sorted_df = filtered_df.sort_values("time", ascending=False)
+            
+            removed_rows = sorted_df.head(remove_outliers)
+            print(f"Removing top {remove_outliers} outliers for operation '{operation}':")
+            print(removed_rows[['id', 'time']])
+            
+            filtered_df = sorted_df.iloc[remove_outliers:]
 
         match strategy:
             case "box":
+                total_ids = len(filtered_df['id'].unique())
+                group_size = max(1, int(total_ids * group_percentage))
+                filtered_df['group'] = filtered_df['id'] // group_size
+                grouped_df = [group for _, group in filtered_df.groupby('group')]
+                data_to_plot = [group['time'] for group in grouped_df]
+                base_positions = np.arange(len(grouped_df)) + 1
+
                 ax.boxplot(
                     data_to_plot,
                     patch_artist=True,
@@ -82,7 +89,7 @@ def plot_single(dataframe, group_percentage, sample_n, strategy, color="lightblu
 
                 ax.plot(x_values, y_values, color=color, linewidth=2, label="Regression Line")
 
-                if operation == "stateful_query" or operation == "stateless_query":
+                if operation in {"stateful_query", "stateless_query"}:
                     xticks = plt.xticks()[0][1:-1]
                     ax.set_xticks(xticks, labels=[f"{int(tick * sample_n)}" for tick in xticks])
 
