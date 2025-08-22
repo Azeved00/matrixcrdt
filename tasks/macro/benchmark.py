@@ -2,6 +2,7 @@ from invoke import task
 import os
 import shutil
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from tasks.utils import notify_on_finish
 from scripts.macro.workload import run_benchmark
@@ -70,20 +71,20 @@ def benchmark(c, name, clients, operations,
             plots = plot_graphs(full_df, strategy=t, warmup=graph_warmup, 
                         include_front=graph_include_front, use_dag_ops=graph_use_dag_ops)
 
-            for op_name, plt in plots.items():
+            for op_name, fig in plots.items():
                 if graph_show:
-                    plt.show()
-                plt.savefig(f'{graph_output_dir}/{name}-{t}-{op_name}.png')
-                plt.close()
+                    fig.show()
+                fig.savefig(f'{graph_output_dir}/{name}-{t}-{op_name}.png')
+                plt.close(fig)
     else:
         plots = plot_graphs(df_list, strategy=graph_strategy, warmup=graph_warmup, 
                             include_front=graph_include_front, use_dag_ops=graph_use_dag_ops)
 
-        for op_name, plt in plots.items():
+        for op_name, fig in plots.items():
             if graph_show:
-                plt.show()
-            plt.savefig(f'{graph_output_dir}/{name}-{op_name}.png')
-            plt.close()
+                fig.show()
+            fig.savefig(f'{graph_output_dir}/{name}-{op_name}.png')
+            plt.close(fig)
 
     print("Plots saved in 'plots' directory.")
     make_table(full_df, include_front=graph_include_front, latex=table_latex)

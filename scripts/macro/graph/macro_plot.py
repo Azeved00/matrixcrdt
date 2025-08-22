@@ -42,38 +42,38 @@ def plot_graphs(df,strategy: str = "box", warmup=0,  include_front=True, use_dag
 
         subset = df[df[op_field].str.strip() == op_name]
         
-        plt.figure(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(14, 6))   
 
         match strategy:
             case "scatter":
-                plt.scatter(subset['front_id'], subset['back_time'], marker="o", 
+                ax.scatter(subset['front_id'], subset['back_time'], marker="o", 
                          label=f'Backend Time', 
                          alpha=0.7, color='#40456a')
 
                 if  include_front:
-                    plt.scatter(subset['front_id'], subset['front_time'], marker="o",
+                    ax.scatter(subset['front_id'], subset['front_time'], marker="o",
                              label=f'Frontend Time',
                              alpha=0.7, color='#f99d1b')
-                plt.title(f"Scatter plot {op_name}")
-                plt.xlabel('System Time')
-                plt.ylabel('Request Time')
+                ax.set_title(f"Scatter plot {op_name}")
+                ax.set_xlabel('System Time')
+                ax.set_ylabel('Request Time')
 
             case "mean":
                 back= subset.groupby('front_id')['back_time'].mean().reset_index()
                 front= subset.groupby('front_id')['front_time'].mean().reset_index()
 
-                plt.plot(back['front_id'], back['back_time'],
+                ax.plot(back['front_id'], back['back_time'],
                          marker='o', linestyle='-',
                          label=f'Backend Time', 
                          alpha=0.7, color='#40456a')
                 if include_front:
-                    plt.plot(front['front_id'],front['front_time'],
+                    ax.plot(front['front_id'],front['front_time'],
                              marker='o', linestyle='-',
                              label=f'Frontend Time',
                              alpha=0.7, color='#f99d1b')
-                plt.title(f"Mean plot {op_name}")
-                plt.xlabel('System Time')
-                plt.ylabel('Request Time')
+                ax.set_title(f"Mean plot {op_name}")
+                ax.set_xlabel('System Time')
+                ax.set_ylabel('Request Time')
 
             case "box":
                 box_df = subset.copy()
@@ -92,20 +92,21 @@ def plot_graphs(df,strategy: str = "box", warmup=0,  include_front=True, use_dag
                     var_name='Stage',
                     value_name='Time'
                 )
-                sns.boxplot(x='id_qbin', y='Time', hue='Stage', data=df_melted)
+                sns.boxplot(x='id_qbin', y='Time', hue='Stage', data=df_melted, ax=ax)
 
-                plt.title(f"Box Plot: {op_name}")
-                plt.xticks(rotation=45)
-                plt.xlabel('System Time')
-                plt.ylabel('Request Time')
+                ax.set_title(f"Box Plot: {op_name}")
+                ax.tick_params(axis='x', rotation=45)
+                ax.set_xlabel('System Time')
+                ax.set_ylabel('Request Time')
 
             case _:
                 print("invalid strategy")
                 return
 
-        plt.legend()
-        plt.tight_layout()
-        final[op_name] = plt
+        ax.legend()
+        fig.tight_layout(pad=3)
+
+        final[op_name] = fig
     return final
         
 

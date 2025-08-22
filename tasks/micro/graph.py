@@ -1,5 +1,6 @@
 from invoke import task
 from invoke import Collection
+import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
@@ -25,13 +26,13 @@ def box_single(c, folder="logs/optimized", output_dir="plots", label="Optimized"
         sample_n=sample_n,
     )
 
-    for op,plt in plts.items():
+    for op, fig in plts.items():
         if show:
-            plt.show()
+            fig.show()
         os.makedirs(output_dir, exist_ok=True)
-        plt.savefig(f"{output_dir}/{label}-{op}.png")
-        plt.close()
-    
+        fig.savefig(f"{output_dir}/{label}-{op}.png")
+        plt.close(fig)
+        
 @task
 def box_dual(c,
               folder1="data/optimized",label1="Optimized",

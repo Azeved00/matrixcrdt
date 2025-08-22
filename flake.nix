@@ -41,6 +41,7 @@
                     openssl
                     pkg-config
                     sqlite
+                    unixtools.netstat
 
                     (python3.withPackages (pp: with pp;[
                         numpy
@@ -58,72 +59,6 @@
                 shellHook = ''
                     build() {
                         cargo build --color=always 2>&1 | less
-                    }
-
-                    micro-bench-1() {
-                        rm -rf $ROOT/logs/micro/bench1/*
-                        rm -rf $ROOT/logs/micro/base1/*
-                        for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/micro1-bench.sh 
-                            $ROOT/scripts/benchmarks/micro1-baseline.sh 
-                        done
-
-                        notify-send -u critical \
-                            "Micro Benchmark 1 Finished!"
-                    }
-                    micro-bench-2() {
-                        rm -rf $ROOT/logs/micro/bench2/*
-                        rm -rf $ROOT/logs/micro/base2/*
-                        for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/micro2-bench.sh 
-                            $ROOT/scripts/benchmarks/micro2-baseline.sh 
-                        done
-                        notify-send -u critical \
-                            "Micro Benchmark 2 Finished!"
-                    }
-                    micro-bench-3() {
-                        rm -rf $ROOT/logs/micro/bench3/*
-                        rm -rf $ROOT/logs/micro/base3/*
-                        for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/micro3-bench.sh 
-                            $ROOT/scripts/benchmarks/micro3-baseline.sh 
-                        done
-                        notify-send -u critical \
-                            "Micro Benchmark 3 Finished!"
-                    }
-
-                    macro-bench1(){
-                        rm -rf $ROOT/logs/macro/bench1/*
-                        rm -rf $ROOT/logs/macro/base1/*
-                        for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/macro/authdag.sh 
-                            $ROOT/scripts/benchmarks/macro/matrix.sh 
-                        done
-
-                        notify-send -u critical \
-                            "Macro Benchmark 1 Finished!"
-                    }
-                    macro-bench2(){
-                        rm -rf $ROOT/logs/macro/bench2/*
-                        rm -rf $ROOT/logs/macro/base2/*
-                        for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/macro/stateless.sh 
-                            $ROOT/scripts/benchmarks/macro/authdag.sh 
-                        done
-
-                        notify-send -u critical \
-                            "Macro Benchmark 2 Finished!"
-                    }
-                    macro-bench3(){
-                        rm -rf $ROOT/logs/macro/bench3/*
-                        rm -rf $ROOT/logs/macro/base3/*
-                        for i in {1..9}; do 
-                            $ROOT/scripts/benchmarks/macro/authless.sh 
-                            $ROOT/scripts/benchmarks/macro/authdag.sh 
-                        done
-
-                        notify-send -u critical \
-                            "Macro Benchmark 3 Finished!"
                     }
                 '';
             };

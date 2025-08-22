@@ -1,6 +1,8 @@
 from invoke import task
 from invoke import Collection
+import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
 
 from scripts.macro.graph import plot_graphs, plot_comparison, make_table, merge_and_validate as merge, strategies
@@ -29,11 +31,12 @@ def single(ctx, name, input_path, strategy="box",
         plots = plot_graphs(df1, strategy=strategy, warmup=warmup, 
                     include_front=include_front, use_dag_ops=use_dag_ops)
 
-        for op, plt in plts.items():
+        for op, fig in plts.items():
             if show:
-                plt.show()
-            plt.savefig(f'{output_path}/{name}-{op_name}.png')
-            plt.close()
+                fig.show()
+            os.makedirs(output_dir, exist_ok=True)
+            fig.savefig(f'{output_path}/{name}-{op_name}.png')
+            plt.close(fig)
     print("Plots saved in 'plots' directory (or shown).")
 
 
