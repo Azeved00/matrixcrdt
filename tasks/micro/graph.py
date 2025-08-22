@@ -11,7 +11,7 @@ import scripts.micro.graph as graph_utils
 @task
 def plot_single(c, folder="logs/optimized", output_dir="plots",
             label="Optimized", color="blue", strategy="box",
-            group_percentage=0.05, sample_n=5, remove_outliers=5,
+            group_percentage=0.05, sample_n=5, remove_outliers=0.05,
             show=True):
     """ Plot a box plot."""
     files = graph_utils.list_files_in_folder(folder)

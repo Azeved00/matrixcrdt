@@ -10,7 +10,7 @@ from .graph_utils import *
 WIDTH = 0.3
 
 def plot_single(dataframe, group_percentage, sample_n, strategy, 
-                color="lightblue", remove_outliers=0):
+                color="lightblue", remove_outliers=0.0):
     """
     Generates grouped box plots for each operation type from a single dataset.
 
@@ -26,14 +26,12 @@ def plot_single(dataframe, group_percentage, sample_n, strategy,
         fig, ax = plt.subplots(figsize=(14, 6))  
 
         filtered_df = dataframe[dataframe['operation'] == operation].copy()
-        if remove_outliers > 0 and len(filtered_df) > remove_outliers:
-            sorted_df = filtered_df.sort_values("time", ascending=False)
+        if remove_outliers is not None and 0 < remove_outliers < 1:
+            threshold = filtered_df['time'].quantile(1 - remove_outliers)
             
-            removed_rows = sorted_df.head(remove_outliers)
-            print(f"Removing top {remove_outliers} outliers for operation '{operation}':")
-            print(removed_rows[['id', 'time']])
-            
-            filtered_df = sorted_df.iloc[remove_outliers:]
+            removed_rows = filtered_df[filtered_df['time'] > threshold]
+            print(f"Removing top {len(removed_rows[['id', 'time']])}({remove_outliers*100}%) outliers for operation '{operation}'")
+            filtered_df = filtered_df[filtered_df['time'] <= threshold]  
 
         match strategy:
             case "box":
