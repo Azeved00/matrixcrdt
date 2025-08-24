@@ -102,3 +102,77 @@ def plot_single(dataframe, group_percentage, sample_n, strategy,
 
     return final
 
+def plot_multi(dataframes, labels, colors=None, group_percentage=0.05,
+               sample_n=5, strategy="box", remove_outliers=0.0,
+               merge_queries=False):
+    """
+    Generate comparison plots for multiple datasets in the same figure.
+    Shorter datasets simply stop plotting when they run out of groups.
+
+    :param merge_queries: If True, merges 'stateful_query' and 'stateless_query' into 'query'
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import textwrap
+
+    WIDTH = 0.3
+    if colors is None:
+        base_colors = ["yellow", "steelblue", "salmon"]
+        colors = [base_colors[i % len(base_colors)] for i in range(len(dataframes))]
+
+    # Optionally merge queries
+    processed_dfs = []
+    for df in dataframes:
+        df_copy = df.copy()
+        if merge_queries:
+            df_copy.loc[df_copy['operation'].isin(['stateful_query', 'stateless_query']), 'operation'] = 'query'
+        processed_dfs.append(df_copy)
+
+    # Collect all unique operations
+    all_operations = sorted({op for df in processed_dfs for op in df['operation'].unique()})
+    final = {}
+
+    for operation in all_operations:
+        fig, ax = plt.subplots(figsize=(14, 6))
+
+        for idx, (df, color, label) in enumerate(zip(processed_dfs, colors, labels)):
+            filtered_df = df[df['operation'] == operation].copy()
+            if remove_outliers and 0 < remove_outliers < 1:
+                threshold = filtered_df['time'].quantile(1 - remove_outliers)
+                filtered_df = filtered_df[filtered_df['time'] <= threshold]
+
+            if filtered_df.empty:
+                continue  # nothing to plot for this dataset
+
+            total_ids = len(filtered_df['id'].unique())
+            group_size = max(1, int(total_ids * group_percentage))
+            filtered_df['group'] = filtered_df['id'] // group_size
+            grouped_df = [group['time'].values for _, group in filtered_df.groupby('group')]
+
+            # Positions relative to dataset only
+            positions = np.arange(1, len(grouped_df) + 1)
+            offset = (idx - (len(dataframes)-1)/2) * WIDTH * 1.1
+            positions = positions + offset
+
+            if strategy == "box":
+                ax.boxplot(
+                    grouped_df,
+                    patch_artist=True,
+                    positions=positions,
+                    widths=WIDTH,
+                    boxprops=dict(facecolor=color),
+                    medianprops=dict(color='black'),
+                    flierprops=dict(marker='o', markerfacecolor=color, markersize=6, linestyle='none')
+                )
+            elif strategy == "line":
+                # line plotting logic here if needed
+                pass
+
+        ax.set_xlabel("Operation Index (Grouped IDs)")
+        ax.set_ylabel("Time (μs)")
+        ax.set_title(f"{strategy} Plot for Operation: {operation}")
+        fig.tight_layout(pad=3)
+        final[operation] = fig
+
+    return final
+

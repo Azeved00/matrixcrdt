@@ -73,9 +73,9 @@ def make_benchmark_task(benchmark_name, color):
 
 
 ns_bench = Collection()
-ns_bench.add_task(make_benchmark_task("authdag", "lightblue"), name="authdag")
-ns_bench.add_task(make_benchmark_task("authless", "salmon"), name="authless")
-ns_bench.add_task(make_benchmark_task("stateless", "yellow"), name="stateless")
+ns_bench.add_task(make_benchmark_task("authdag", "yellow"), name="authdag")
+ns_bench.add_task(make_benchmark_task("authless", "steelblue"), name="authless")
+ns_bench.add_task(make_benchmark_task("stateless", "salmon"), name="stateless")
 ns_bench.add_task(benchmark, name="benchmark", default=True)
 
 ns= Collection()

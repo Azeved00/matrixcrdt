@@ -1,0 +1,2 @@
+Removing top 125(0.5%) outliers for operation 'apply'
+Removing top 24(0.5%) outliers for operation 'stateful_query'
