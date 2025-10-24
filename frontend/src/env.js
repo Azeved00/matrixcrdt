@@ -1,7 +1,7 @@
 export const debug      = process.env.NODE_ENV   === 'dev';
 export const log        = process.env.NODE_ENV   === 'bench';
 
-export const state      = !process.env.STATE_ENV;
+export const state      = process.env.STATE_ENV !== "stateless";
 
 export const automerge_baseStateChange = [new Uint8Array([
   133, 111,  74, 131, 130, 180, 194,  62,   1,  96,   0,  16,

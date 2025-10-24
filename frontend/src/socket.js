@@ -91,10 +91,14 @@ function sendAndWait(message) {
     });
 }
 
-export async function query(change_fn) {
+export async function query(change_fn, updateCursor = null) {
     const timing = {};
 
-    const code = ENV.state ? "StatefulQuery" : "StatelessQuery";
+    
+    let code = ENV.state ? "StatefulQuery" : "StatelessQuery";
+    if (updateCursor !== null) {
+      code = updateCursor ? "StatefulQuery" : "StatelessQuery";
+    }
 
     const startSerialize = process.hrtime.bigint();
     let message = new Message(code, clock, "");

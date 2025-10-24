@@ -13,6 +13,7 @@ const app = express();
 const port = process.argv[2] || 3000;
 let counter = 0;
 let changes = [];
+console.log(ENV.state)
 
 // Set up express server
 SOCKET.init(20076, "127.0.0.1", port)
@@ -30,7 +31,10 @@ app.get('/save', async function (req, res) {
     res.status(200).json();
 });
 
-app.get('/query', async function (_req, res)  {
+app.get('/query', async function (req, res)  {
+
+    const updateCursorHeader = req.headers['update_cursor'];
+    const updateCursor = updateCursorHeader === 'true' || updateCursorHeader === '1';
 
     if (ENV.debug){
         console.log("/query request")
@@ -44,7 +48,7 @@ app.get('/query', async function (_req, res)  {
         }
         [doc] = Automerge.applyChanges(doc,change_buffer);
         //console.log("after_changes", Automerge.toJS(doc));
-    });
+    }, updateCursor);
 
     res.status(200).json();
 });

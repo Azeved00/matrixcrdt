@@ -9,10 +9,11 @@ import * as ENV from './src/env.js';
 let [doc] = Automerge.applyChanges(Automerge.init(), ENV.automerge_baseStateChange);
 const app = express();
 const port = process.argv[2] || 3000;
+const socket_port = process.argv[3] || 20076;
 const logger = new Logger(`log_${port}.csv`);
 let counter = 0;
 
-SOCKET.init(20076, "127.0.0.1", port)
+SOCKET.init(socket_port, "127.0.0.1", port)
 
 class Prescription {
     constructor(id, patient, doctor, pharmacy) {
