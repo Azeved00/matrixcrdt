@@ -2,6 +2,8 @@ target
 **/node_modules
 artifacts/*.drawio.bkp
 artifacts/*.drawio.dtmp
+**/backup
+**/synapse-data
 **/logs
 **/log*.csv
 **/log*.log
