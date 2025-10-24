@@ -81,6 +81,7 @@ def run_benchmark(backend_bin, clients=2, operations=10000, logs_dir="./logs/def
              "--bin", backend_bin, "--features", "bench"]
         )
         procs.append(backend)
+        time.sleep(2)
         wait_for_port(20076)
 
         print("🖥️ Starting frontends...")
@@ -90,7 +91,7 @@ def run_benchmark(backend_bin, clients=2, operations=10000, logs_dir="./logs/def
             env["NODE_ENV"] = "bench"
             env["STATE_ENV"] = frontend_env
             proc = subprocess.Popen(
-                ["npm", "--prefix", "./frontend", "run", "macro", str(port)],
+                ["npm", "--prefix", "./frontend", "run", "macro", str(port), "20076"],
                 env=env
             )
             procs.append(proc)
@@ -112,6 +113,11 @@ def run_benchmark(backend_bin, clients=2, operations=10000, logs_dir="./logs/def
         for proc in procs:
             try:
                 proc.send_signal(signal.SIGTERM)
+                time.sleep(1)
+                if proc.poll() is None:
+                    print("Process is still running")
+                else:
+                    print(f"Process terminated with exit code {proc.returncode}")
             except Exception as e:
                 print(f"⚠️ Failed to terminate process: {e}")
 
@@ -123,3 +129,62 @@ def run_benchmark(backend_bin, clients=2, operations=10000, logs_dir="./logs/def
 
         print("✅ Benchmark complete.")
 
+def run_matrix(clients=2, operations=10000, logs_dir="./logs/default", frontend_env="",  seed=None):
+    ""
+    procs = []
+    try:
+        print(f"🔧 Starting backend binary: matrix")
+        for i in range(1, int(clients) + 1):
+            port = 20075 + i
+            backend = subprocess.Popen(
+                ["cargo", "run", "--manifest-path", "./backend/Cargo.toml", 
+                 "--bin", "matrix", "--features", "bench", "--", str(port)]
+            )
+            procs.append(backend)
+            time.sleep(2)
+            wait_for_port(port)
+
+        print("🖥️ Starting frontends...")
+        for i in range(1, int(clients) + 1):
+            port = 3000 + i
+            env = os.environ.copy()
+            env["NODE_ENV"] = "bench"
+            env["STATE_ENV"] = frontend_env
+            proc = subprocess.Popen(
+                ["npm", "--prefix", "./frontend", "run", "macro", str(port), "20076"],
+                env=env
+            )
+            procs.append(proc)
+            wait_for_port(port)
+
+        time.sleep(1)
+        print("🚀 Starting workload script...")
+        run_workload(clients, operations, seed)
+
+
+    except KeyboardInterrupt:
+        print("⚠️ Interrupted by user (Ctrl+C)")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ A subprocess failed: {e}")
+    except Exception as e:
+        print(f"❌ An unexpected error occurred: {e}")
+    finally:
+        print("🧹 Cleaning up processes...")
+        for proc in procs:
+            try:
+                proc.send_signal(signal.SIGTERM)
+                time.sleep(1)
+                if proc.poll() is None:
+                    print("Process is still running")
+                else:
+                    print(f"Process terminated with exit code {proc.returncode}")
+            except Exception as e:
+                print(f"⚠️ Failed to terminate process: {e}")
+
+        print("📦 Collecting logs...")
+        os.makedirs(logs_dir, exist_ok=True)
+        move_logs(logs_dir, "./*.csv", "script")
+        move_logs(logs_dir, "./frontend/src/*.csv", "front")
+        move_logs(logs_dir, "./backend/*.csv", "back")
+
+        print("✅ Benchmark complete.")

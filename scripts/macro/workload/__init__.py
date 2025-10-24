@@ -1,1 +1,1 @@
-from .main import run_benchmark
+from .main import run_benchmark, run_matrix

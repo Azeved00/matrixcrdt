@@ -1,7 +1,11 @@
+import os
+import pandas as pd
+
 from .process_logs import merge_files 
 from .validation import validate_df
 from .macro_plot import plot_graphs, plot_comparison, strategies
 from .tables import make_table
+from .box_tables import make_box_table
 
 def merge_and_validate(input_path):
     """
@@ -24,3 +28,40 @@ def merge_and_validate(input_path):
         print(f"Finished with {len(validation_errors)} errors")
         sys.exit(1)
     return df1
+
+def merge_folders(parent_path):
+    """
+    Merges and validates all subfolders under a given parent folder.
+
+    Args:
+        parent_path (str): Path to the parent folder containing subfolders.
+
+    Returns:
+        pd.DataFrame: A single merged and validated dataframe with all entries,
+                      including an 'origin' column indicating which subfolder
+                      each entry came from, sorted by 'id'.
+    """
+    all_dfs = []
+
+    # Iterate over subfolders
+    for entry in os.listdir(parent_path):
+        subfolder = os.path.join(parent_path, entry)
+        if os.path.isdir(subfolder):
+            print(f"[INFO] Processing {subfolder}...")
+            df = merge_and_validate(subfolder)
+            df['origin'] = entry  # add folder name
+            all_dfs.append(df)
+
+    if not all_dfs:
+        raise ValueError(f"No valid subfolders found in {parent_path}")
+
+    # Concatenate all
+    merged_df = pd.concat(all_dfs, ignore_index=True)
+
+    # Ensure sorting by id
+    if 'thread_id' in merged_df.columns:
+        merged_df = merged_df.sort_values(by='thread_id').reset_index(drop=True)
+    else:
+        print("[WARN] No 'id' column found for sorting.")
+
+    return merged_df

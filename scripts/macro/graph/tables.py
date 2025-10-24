@@ -112,8 +112,10 @@ def make_table(df, parts=4, include_front=True, latex=False):
     if latex:
         latex_table = make_latex_table(summary, parts)
         print(latex_table)
+        return  latex_table
     else:
         print_summary(summary, parts)
+        return None
 
 def make_summary(df, include_front=True):
     summary = make_back_summary(df, parts)

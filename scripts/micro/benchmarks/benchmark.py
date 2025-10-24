@@ -26,7 +26,7 @@ def move_logs(logs_dir, pattern, prefix):
         shutil.move(file, dest)
 
 def run_benchmark(c, backend_bin="socket", frontend_env="",
-                  sample=1000, apply_n=5, query=True,
+                  sample=1000, apply_n=5, query=True, stateful_apply_n=5,
                   logs_dir="./logs/micro"):
     procs = []
     try:
@@ -64,13 +64,20 @@ def run_benchmark(c, backend_bin="socket", frontend_env="",
         print("🚀 Starting Requests...")
         headers = {'Content-Type': 'application/json'}
         with tqdm(total=sample, desc="Samples") as pbar:
+            j = 0
             for _ in range(sample):
                 for i in range(1, apply_n + 1):
                     requests.post("http://localhost:3001/map", headers=headers, 
                                   json={"key": "123", "value": i})
                     requests.get("http://localhost:3001/save")
+                j = j+1
                 if query:
-                    requests.get("http://localhost:3002/query",)
+                    if j >=  stateful_apply_n:
+                        headers["update_cursor"] = "true";
+                        j=0
+                    else:
+                        headers["update_cursor"] = "false";
+                    requests.get("http://localhost:3002/query", headers= headers )
                 pbar.update(1)
 
     except subprocess.CalledProcessError as e:
