@@ -16,6 +16,9 @@ use matrix_sdk::{
     }
 };
 
+use tracing_subscriber::filter::EnvFilter;
+use tracing::{info, error, info_span};
+
 use auth_crdt::{auth_dag::AuthMerkleDag, auth_node::AuthNode, QueryCursor};
 
 type Data = Vec<u8>;
@@ -56,7 +59,7 @@ impl AuthMatrixDag
     /// create a new Authenticated Dag,
     /// you need to pass matrix's credentials as parameters
     pub async fn new(username: &str, password: &str) -> Self {
-        println!("logging in");
+        info!("logging in");
         let client = Client::builder()
             .homeserver_url(Self::HOMESERVER.to_string())
             .build()
@@ -68,7 +71,7 @@ impl AuthMatrixDag
             .initial_device_display_name("bot")
             .await.expect("authenticated failed");
 
-        println!("logged in as {username}");
+        info!("logged in as {username}");
 
 
         let dag = AuthMerkleDag::new(password.into());
@@ -76,12 +79,12 @@ impl AuthMatrixDag
         client.add_event_handler_context(Arc::clone(&context));
         client.add_event_handler(self::map_on_update);
 
-        println!("Initial Sync Step");
+        info!("Initial Sync Step");
         let response = client.sync_once(Default::default()).await.unwrap();
         let settings = SyncSettings::default()
             .token(response.next_batch.clone());
 
-        println!("Creating Public Room");
+        info!("Creating Public Room");
         let mut request = CreateRoomRequest::new();
         request.name= Some("My Benchmark Room".into());
         request.topic= Some("Room for benchmarking tests".into());
@@ -91,7 +94,7 @@ impl AuthMatrixDag
 
         let room = client.create_room(request).await.unwrap();
 
-        println!("Start Syncing Thread");
+        info!("Start Syncing Thread");
         tokio::spawn(async move {
             let _ = client.sync(settings.clone()).await;
         });
@@ -107,9 +110,10 @@ impl AuthMatrixDag
     pub async fn send_update(&mut self, cmd: Data, c: Option<QueryCursor>) 
         -> std::io::Result<QueryCursor> 
     {
-        let mut dag= self.dag.write().await;
-        let (node,cursor)= dag.insert(cmd,c)
-            .expect("failed to add node to DAG");
+        let (node, cursor) = {
+            let mut dag = self.dag.write().await;
+            dag.insert(cmd, c).expect("failed to add node to DAG")
+        };
 
         let content = UpdateEventContent {
             cmd: node.clone(),
@@ -117,10 +121,12 @@ impl AuthMatrixDag
             version: Self::VERSION,
         };
 
-        let result = self.room.send(content).await;
-        if result.is_err() {
-            panic!("An error occurred: {:?}", result.unwrap_err());
-        }
+        let room = self.room.clone();
+        tokio::spawn(async move {
+            if let Err(e) = room.send(content).await {
+                eprintln!("Failed to send update: {:?}", e);
+            }
+        });
         return Ok(cursor)
     }
 
@@ -132,41 +138,30 @@ impl AuthMatrixDag
     /// if a `log` is provided then the nodes that were updated before 
     /// will **not** be updated again making sure that `f` 
     /// is only called once for each node of the dag
-    pub fn query(&self, cursor: Option<QueryCursor>) -> (Vec<Data>, QueryCursor)
+    pub async fn query(&self, cursor: Option<QueryCursor>) -> (Vec<Data>, QueryCursor)
     {
-        let (res,cursor) = tokio::task::block_in_place(|| {
-            let runtime = tokio::runtime::Runtime::new().unwrap();
-
-            runtime.block_on(async {
-                let map = self.dag.read().await;
-                map.query(cursor.clone())
-            })
-        });
-        return (res, cursor)
+        info!("Starting query");
+        let map = self.dag.read().await;
+        let (res, cursor) = map.query(cursor.clone());
+        return (res, cursor);
     }
 
     /// Pretty print function for a HashMap
-    pub fn pretty_print_dag(&self) -> String
+    pub async fn pretty_print_dag(&self) -> String
     {
-        tokio::task::block_in_place(|| {
-            let runtime = tokio::runtime::Runtime::new().unwrap();
-
-            runtime.block_on(async {
-                let map = self.dag.read().await;
-                let mut output = String::new();
-                output.push_str("{\n");
-                for value in map.linearize() {
-                    output.push_str(&format!("  {:#?},\n", value));
-                }
-                output.push('}');
-                output
-            })
-        })
+        let map = self.dag.read().await;
+        let mut output = String::new();
+        output.push_str("{\n");
+        for value in map.linearize() {
+            output.push_str(&format!("  {:#?},\n", value));
+        }
+        output.push('}');
+        output
     }
 }
 
 async fn map_on_update(event: SyncUpdateEvent, room: Room, ctx: Ctx<DagReference>) {
-    //println!("received update");
+    info!("received update");
     if room.state() != RoomState::Joined {
         return;
     }

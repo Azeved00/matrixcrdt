@@ -1,8 +1,7 @@
 use std::net::{TcpListener, TcpStream};
+use std::net::SocketAddr;
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
-#[cfg(feature = "bench")]
-use std::path::Path;
 #[cfg(feature = "bench")]
 use std::time::Instant;
 use std::cmp;
@@ -13,12 +12,16 @@ use auth_crdt::{dag::MerkleDag, QueryCursor};
 use auth_crdt::common::logger::LogFile;
 use auth_crdt::common::message::{Message, Command}; 
 
+use tracing_subscriber::filter::EnvFilter;
+use tracing::{info, error, info_span};
+
 pub type Dag =  MerkleDag<Vec<u8>>;
 
 
 struct Context {
     pub clock: u64,
     pub dag: Arc<RwLock<Dag>>,
+    pub addr: SocketAddr,
     #[cfg(feature = "bench")]
     pub log_file: LogFile,
     pub cursor: QueryCursor,
@@ -33,12 +36,10 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
             break;
         }
 
-        #[cfg(feature = "debug")]
-        println!("received new message");
+        info!("received new message");
         let mut msg = Message::header_from_bytes(&header).unwrap();
 
-        #[cfg(feature = "debug")]
-        println!("{:?}", msg);
+        info!("Received: {:?}", msg);
 
         ctx.clock = cmp::max(ctx.clock, msg.clock);
 
@@ -50,6 +51,7 @@ fn handle_connection(mut stream: TcpStream,mut ctx: Context ) {
         msg.message = buffer;
 
         let answer = process_message(&mut ctx, msg);
+        info!("Answered: {:?}", answer);
         let ser_answer = answer.to_bytes();
 
         stream.write_all(&ser_answer).unwrap();
@@ -147,22 +149,30 @@ fn run_server() -> std::io::Result<()>  {
     let dag = MerkleDag::<Vec<u8>>::new();
     let dag_ref = Arc::new(RwLock::new(dag));
 
+    tracing_subscriber::fmt()
+        //.compact()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_target(false)
+        .with_thread_ids(false)
+        .with_thread_names(false)
+        .with_level(true)
+        .init();
+
     loop {
         match listener.accept(){
             Err(e) => {
-#[cfg(feature = "debug")]
                 println!("couldn't get client: {e:?}");
                 return Err(e);
             },
-            Ok((socket, _addr)) => {
-#[cfg(feature = "debug")]
-                println!("new client: {:?}", _addr);
+            Ok((socket, addr)) => {
+                info!("new client: {:?}", addr);
                 let ctx = Context {
                     clock: 0,
+                    addr,
                     dag: Arc::clone(&dag_ref),
 #[cfg(feature = "bench")]
                     log_file: LogFile::new(std::path::Path::new(
-                            &format!("backend/log_{:}.csv", _addr.port()))),
+                            &format!("backend/log_{:}.csv", addr.port()))),
                     cursor: QueryCursor::default(),
                 };
                 tokio::spawn(async move {

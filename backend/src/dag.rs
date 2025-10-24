@@ -296,6 +296,10 @@ impl<O> MerkleDag<O>
             Some(cursor) => cursor,
             None => QueryCursor::new()
         };
+
+        //if self.topo.len() == 0 {
+        //    return (vec![], cursor) 
+        //};
         let mut index = self.topo.len()-1;
         let size = self.topo.len() - cursor.index;
         let mut vis :Vec<bool> = vec![false; size.try_into().unwrap()];
