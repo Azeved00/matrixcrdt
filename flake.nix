@@ -64,27 +64,31 @@
             };
 
             matrix-server = pkgs.mkShell{
+            inherit ROOT;
+                buildInputs = with pkgs;[];
                 CONTAINER_NAME="synapse";
                 IMAGE_NAME="matrixdotorg/synapse:latest";
-                VOLUME_NAME="synapse-data";
+                VOLUME_NAME="$ROOT/synapse-data";
                 PORT="8008";
 
-                shell-hook=''
-                    alias matrix-start="docker run -d \
+                shellHook=''
+                    alias matrix-start="sudo docker run -d \
                       --name $CONTAINER_NAME \
                       -v $VOLUME_NAME:/data \
                       -p $PORT:$PORT \
                       $IMAGE_NAME"
 
-                    alias matrix-stop="docker stop $CONTAINER_NAME"
+                    alias matrix-stop="sudo docker stop $CONTAINER_NAME"
 
-                    alias matrix-clean="docker rm -f $CONTAINER_NAME"
+                    alias matrix-clean="sudo docker rm -f $CONTAINER_NAME"
 
-                    alias matrix-generate="docker run --rm -it \
+                    alias matrix-generate="sudo docker run --rm -it \
                       -e SYNAPSE_SERVER_NAME=your.matrix.host \
                       -e SYNAPSE_REPORT_STATS=yes \
                       -v $VOLUME_NAME:/data \
                       $IMAGE_NAME generate"
+                    
+                    echo hi
                 '';
             };
         };
