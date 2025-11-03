@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+      - "8448:8448"
+    environment:
+      - SYNAPSE_SERVER_NAME=matrix.example.com
+      - SYNAPSE_REPORT_STATS=yes
+    volumes:
+      - ./synapse-data:/data
+
+  synapse-init:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse-init
+    command: generate
+    environment:
+      - SYNAPSE_SERVER_NAME=matrix.example.com
+      - SYNAPSE_REPORT_STATS=yes
+    volumes:
+      - ./synapse-data:/data
+    restart: "no"
