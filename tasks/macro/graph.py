@@ -64,7 +64,7 @@ def comparison(ctx,folders,
     show = str(show).lower() in ("1", "true", "yes", "on")
 
     folders = [f.strip() for f in folders.split(",") if f.strip()]
-    labels = ["Authdag", "Baseline" , "Stateless", "Matrix"]
+    labels = ["Cached", "Baseline" , "Authenticated", "Matrix"]
     colors = ["yellow", "steelblue", "salmon", "limegreen"]
 
     dfs = []

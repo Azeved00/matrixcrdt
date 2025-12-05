@@ -29,16 +29,16 @@ def make_benchmark_task(benchmark_name, benchmark_type, clients, operations):
 from . import graph, benchmark
 
 ns_simple = Collection()
-ns_simple.add_task(make_benchmark_task("authdag", "simple", 2, 10000), name="authdag")
-ns_simple.add_task(make_benchmark_task("stateless", "simple", 2, 10000), name="stateless")
+ns_simple.add_task(make_benchmark_task("cached", "simple", 2, 10000), name="cached")
+ns_simple.add_task(make_benchmark_task("authenticated", "simple", 2, 10000), name="authenticated")
 ns_simple.add_task(make_benchmark_task("baseline", "simple", 2, 10000), name="baseline")
 ns_simple.add_task(make_benchmark_task("authless", "simple", 2, 10000), name="authless")
 ns_simple.add_task(make_benchmark_task("matrix", "simple", 2, 10000), name="matrix")
 
 ns_full = Collection()
-ns_full.add_task(make_benchmark_task("authdag", "full", 32, 10000), name="authdag")
+ns_full.add_task(make_benchmark_task("cached", "full", 32, 10000), name="cached")
 ns_full.add_task(make_benchmark_task("stateless", "full", 32, 100), name="stateless")
-ns_full.add_task(make_benchmark_task("authless", "full",32, 10000), name="authless")
+ns_full.add_task(make_benchmark_task("authenticated", "full",32, 10000), name="authenticated")
 ns_full.add_task(make_benchmark_task("matrix", "full", 32, 10000), name="matrix")
 
 ns = Collection()

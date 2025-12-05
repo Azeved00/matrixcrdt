@@ -49,7 +49,7 @@ def benchmark(c, name, clients, operations,
     for i in range(repetitions):
         print("🔧 Running benchmark...")
         match name:
-            case "authdag":
+            case "caching":
                 run_benchmark(
                     clients=clients, operations=operations,
                     backend_bin="socket", frontend_env= "",
@@ -65,7 +65,7 @@ def benchmark(c, name, clients, operations,
                     logs_dir=temp_dir,
                     seed=workload_seed,
                 )
-            case "stateless":
+            case "authenticated":
                 run_benchmark(
                     clients=clients, operations=operations,
                     backend_bin="socket", frontend_env= "stateless",
@@ -117,6 +117,14 @@ def benchmark(c, name, clients, operations,
                                     use_dag_ops=graph_use_dag_ops)
 
                 for op_name, fig in plots.items():
+                    ax = fig.axes[0]
+
+                    legend_patches = [mpatches.Patch(color=color, label=name.capitalize())]
+                    if include_front:
+                        legend_patches = [mpatches.Patch(color=color, label="Backend Time")]
+                        legend_patches.append(mpatches.Patch(color=front_color, label="Frontend Time"))
+                    ax.legend(handles=legend_patches)
+
                     if graph_show:
                         fig.show()
                     fig.savefig(f'{output_dir}/{name}-{t}-{op_name}.png')
