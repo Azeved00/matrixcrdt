@@ -42,7 +42,7 @@ def table(c, folder="logs/optimized",
 @task
 def plot_single(c, folder="logs/optimized", output_dir="plots",
             label="Optimized", color="blue", strategy="box",
-            group_percentage=0.05, sample_n=5, remove_outliers=0.05,
+            group_percentage=0.05, sample_n=5, remove_outliers=0.5,
             show=True):
     """ Plot a box plot."""
     files = graph_utils.list_files_in_folder(folder)
@@ -129,7 +129,7 @@ def plot_compare(c,
     folders = [f.strip() for f in folders.split(",") if f.strip()]
 
     # Fixed color palette
-    labels = ["Authdag", "Baseline" , "Stateless"]
+    labels = ["Cached", "Baseline" , "Authenticated"]
     colors = ["yellow", "steelblue", "salmon"]
     colors = [colors[i % len(colors)] for i in range(len(folders))]  # cycle if >3 folders
 
