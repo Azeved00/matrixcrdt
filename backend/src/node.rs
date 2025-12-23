@@ -9,10 +9,11 @@ use serde::{
 };
 
 use serde_with::{serde_as, DisplayFromStr};
+use crate::auth_crdt::Node;
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-pub struct Node<O> 
+pub struct MerkleNode<O> 
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     #[serde_as(as = "Vec<DisplayFromStr>")]
@@ -31,27 +32,29 @@ pub struct Node<O>
     pub id: u64,
 }
 
-impl<O> Node<O>
+impl<O> Node<O> for MerkleNode<O>
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
-    pub(crate) fn new(data: O, parents: Vec<u64>,
-        olayer: Option<usize>, oindex:Option<usize>) -> Node<O>{
+    type Key = ();
+    type Hash = u64;
+
+    fn new(_: (), data: O, parents: Vec<u64>) -> Self{
         let mut hasher = DefaultHasher::new();
         data.hash(&mut hasher);
         parents.hash(&mut hasher);
         let hash = hasher.finish();
 
-        Node{
+        Self {
             id:hash,
             data,
             parents,
-            layer: match olayer{ None => 0, Some(l) => l},
-            index: match oindex{ None => 0, Some(i) => i},
+            layer: 0,
+            index: 0,
         }
     }
 }
 
-impl<O> Hash for Node<O> 
+impl<O> Hash for MerkleNode<O> 
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -59,7 +62,7 @@ impl<O> Hash for Node<O>
     }
 }
 
-impl<O> Debug for Node<O>
+impl<O> Debug for MerkleNode<O>
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -73,14 +76,14 @@ impl<O> Debug for Node<O>
 }
 
 
-impl<O> Ord for Node<O>
+impl<O> Ord for MerkleNode<O>
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.layer.cmp(&other.layer)
     }
 }
-impl<O> PartialOrd for Node<O> 
+impl<O> PartialOrd for MerkleNode<O> 
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -88,7 +91,7 @@ impl<O> PartialOrd for Node<O>
     }
 }
 
-impl<O> PartialEq for Node<O> 
+impl<O> PartialEq for MerkleNode<O> 
     where O:Clone, O:Debug, O:Hash, O:PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -104,7 +107,7 @@ impl<O> PartialEq for Node<O>
     }
 }
 
-impl<O> std::cmp::Eq for Node<O> 
+impl<O> std::cmp::Eq for MerkleNode<O> 
     where O:Clone, O:Debug, O:Hash, O:PartialEq, 
 {}
 

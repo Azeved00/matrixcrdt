@@ -5,6 +5,7 @@ pub mod node;
 pub mod dag;
 pub mod auth_node;
 pub mod auth_dag;
+pub mod auth_crdt;
 
 pub mod common {
 #[cfg(feature = "bench")]

@@ -18,6 +18,7 @@ use serde_json;
 
 use crate::{
     Hash, QueryCursor,
+    auth_crdt::{AuthClient,AuthReplica},
     dag::MerkleDag,
     node::Node,
     auth_node::AuthNode,
@@ -41,6 +42,30 @@ pub struct AuthMerkleDag<D:Digest, O>
     dag: MerkleDag<O>,
 
     hashes: HashMap<u64, Hash>,
+}
+
+impl<O, N, D:Digest> AuthClient<N,O> for AuthMerkleDag<D:Digest, O> 
+    where O: Clone, O: hash::Hash, O: Debug, O:PartialEq,
+          O:Serialize, O:for<'de> Deserialize<'de>,
+        D: CoreProxy,
+        D::Core: HashMarker + 
+            UpdateCore + 
+            FixedOutputCore + 
+            BufferKindUser<BufferKind = Eager> + 
+            Default + Clone,
+        <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
+        Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero, 
+{
+    /// Create a new Authenticated Merkle Dag 
+    /// `key` will be used to hash the nodes
+    fn new(crypto: Vec<u8>, client_id:u64) -> Self {
+        Self {
+            dag: MerkleDag::new(), 
+            hasher: PhantomData::<D>,
+            key: crypto,
+            hashes: HashMap::new(),
+        }
+    }
 }
 
 impl<D: Digest, O> AuthMerkleDag<D, O> 
@@ -107,16 +132,7 @@ impl<D: Digest, O> AuthMerkleDag<D, O>
     }
 
     //=======================SPEC IMPLEMENTATION==================================
-    /// Create a new Authenticated Merkle Dag 
-    /// `key` will be used to hash the nodes
-    pub fn new(key: Vec<u8>) -> Self {
-        Self {
-            dag: MerkleDag::new(), 
-            hasher: PhantomData::<D>,
-            key,
-            hashes: HashMap::new(),
-        }
-    }
+
 
     /// Insert a new node into the authenticated merkle dag,
     pub fn insert(&mut self, data:O, opt_cursor: Option<QueryCursor>) -> io::Result<(AuthNode<O>, QueryCursor)> {
