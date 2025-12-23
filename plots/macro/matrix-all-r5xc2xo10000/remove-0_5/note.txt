@@ -1,3 +1,0 @@
-
-[INFO] Removed 165 entries (0.5%) based on back_time outliers.
-[INFO] Removed 33 entries (0.5%) based on back_time outliers.
