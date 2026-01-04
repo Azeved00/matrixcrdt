@@ -8,11 +8,16 @@ use std::io;
 use std::sync::Arc;
 use std::hash::Hash;
 use serde::{Serialize, Deserialize};
+use std::marker::PhantomData;
 
-use crate::node::MerkleNode;
+use crate::traits::{Node, Client};
 use crate::QueryCursor;
-use crate::auth_crdt::{Client};
 
+#[derive(Clone)]
+pub struct Niceties {
+    pub layer: usize,
+    pub index: usize,
+}
 
 /// The Merkle dag structure,
 ///
@@ -22,35 +27,44 @@ use crate::auth_crdt::{Client};
 /// a total dag is a dag such that for all nodes all parents are in the dag while
 /// a partial dag is a dag in which the parents of some nodes are not inside the dag
 #[derive(Clone)]
-pub struct MerkleDag<O>
+pub struct MerkleDag<O, N>
   where O: Clone, O: Debug, O:Hash, O:PartialEq,
-          O:Serialize, O:for<'de> Deserialize<'de>
+        O:Serialize, O:for<'de> Deserialize<'de>,
+        N: Node<O, Key = Vec<u8>, Hash=Vec<u8>>, N: std::fmt::Debug
 {
-    dag: DashMap<u64, Arc<MerkleNode<O>>>,
-    heads: DashMap<u64, Arc<MerkleNode<O>>>,
-    topo: Vec<Arc<MerkleNode<O>>>,
+    data_type: PhantomData<O>,
+
+    dag: DashMap<Vec<u8>, (Arc<N>, Niceties)>,
+    heads: DashMap<Vec<u8>, Arc<N>>,
+    topo: Vec<Arc<N>>,
+
     cursor: QueryCursor,
     partial: bool,
     top_layer: usize,
+    key: Vec<u8>,
 }
 
-impl<O> Client<O> for MerkleDag<O>
+impl<O, N> Client<O> for MerkleDag<O, N>
   where O: Clone, O: Debug, O:Hash, O:PartialEq,
-          O:Serialize, O:for<'de> Deserialize<'de>
+        O:Serialize, O:for<'de> Deserialize<'de>,
+        N: Node<O, Key = Vec<u8>, Hash=Vec<u8>>, N: std::fmt::Debug
 {
-    type Key = ();
-    type NodeImpl = MerkleNode<O>;
+    type Key = Vec<u8>;
+    type NodeImpl = N;
 
     /// Create a new empty graph
     /// This is done by giving a key to perform the hashes
-    fn new(key: (), client_id:u64) -> Self {
+    fn new(key: Vec<u8>, client_id:u64) -> Self {
         Self{ 
+            data_type: PhantomData::<O>,
+
             dag: DashMap::new(), 
             partial: false,
             top_layer: 0,
             heads: DashMap::new(), 
             topo: Vec::new(),
             cursor: QueryCursor::new(),
+            key: key,
         }
     }
 
@@ -61,22 +75,21 @@ impl<O> Client<O> for MerkleDag<O>
     /// if the user provides a query cursor, it will be updated to include the new node,
     /// i.e. remove the new node's parents and add it to the cursor
     ///
-    /// This method has temporal complexity: O(p. log n) where
+    /// This method has temporal complexity: O(p. log n) where: C<NType::Hash
     ///     p is number of parents of the node
     ///     n is the number of nodes of the graph
-    fn insert(&mut self, data:O)
-        -> io::Result<(Arc<MerkleNode<O>>)>
+    fn insert(&mut self, data:O) -> io::Result<Arc<Self::NodeImpl>>
     {
-        let parent_ids : Vec<u64> = self.cursor.heads.clone().into_iter().collect();
-        let mut layer = 0usize;
+        let parent_ids : Vec<Vec<u8>> = self.cursor.heads.clone().into_iter().collect();
+        let mut layer :usize = 0usize;
         for parent_id in &parent_ids{
             let parent = self.get_node(parent_id);
             match parent {
                 None => {
                     return Err(io::Error::new(io::ErrorKind::Other, "Not all parents of the node are in the Dag"));
                 }
-                Some(node) => {
-                    layer = cmp::max(layer, node.layer);
+                Some((_, stats)) => {
+                    layer = cmp::max(layer, stats.layer);
                 }
             }
 
@@ -87,14 +100,22 @@ impl<O> Client<O> for MerkleDag<O>
         layer += 1;
         self.top_layer = cmp::max(self.top_layer, layer);
 
-        let node = MerkleNode::new(data, parent_ids, Some(layer), Some(self.topo.len()));
+        let node = Self::NodeImpl::new(&self.key, 
+            data, 
+            parent_ids
+        );
 
-        let nrf = Arc::new(node.clone());
-        self.dag.insert(nrf.id.clone(), Arc::clone(&nrf));
+        let niceties = Niceties {
+            layer,
+            index: self.topo.len()
+        };
+
+        let nrf = Arc::new(node);
+        self.dag.insert(nrf.get_id(), (Arc::clone(&nrf),niceties));
         self.topo.push(Arc::clone(&nrf));
-        self.heads.insert(nrf.id.clone(), Arc::clone(&nrf));
+        self.heads.insert(nrf.get_id(), Arc::clone(&nrf));
 
-        self.cursor.heads.insert(nrf.id.clone());
+        self.cursor.heads.insert(nrf.get_id());
         
         return Ok(nrf);
     }
@@ -112,34 +133,35 @@ impl<O> Client<O> for MerkleDag<O>
 
     fn query(&self) -> Vec<O>
     {
-        let mut cursor = self.cursor;
+        let cursor = self.cursor.clone();
         let mut index = self.topo.len()-1;
         let size = self.topo.len() - cursor.index;
         let mut vis :Vec<bool> = vec![false; size.try_into().unwrap()];
         let mut res = Vec::<O>::new();
 
         for head_hash in &cursor.heads {
-            let head = self.get_node(&head_hash).unwrap();
-            if head.index > cursor.index {
-                vis[head.index - cursor.index] = true;
+            let (_, stats) = self.get_node(&head_hash).unwrap();
+            if stats.index > cursor.index {
+                vis[stats.index - cursor.index] = true;
             }
         }
 
         while index >= cursor.index {
             let top = &self.topo[index];
 
-            for parent_hash in &top.parents {
-                let parent = self.get_node(&parent_hash).unwrap();
-                if parent.index < cursor.index {
+            for parent_hash in &top.get_parents() {
+                let (_, stats) = self.get_node(&parent_hash).unwrap();
+                if stats.index < cursor.index {
                     continue
                 }
-                else if vis[top.index - cursor.index]{
-                    vis[parent.index - cursor.index] = true;
+                else if vis[stats.index - cursor.index]{
+                    vis[stats.index - cursor.index] = true;
                 } 
             }
             
-            if !vis[top.index - cursor.index]{
-                res.push(top.data.clone());
+            let (top, stats) = self.get_node(&top.get_id()).unwrap();
+            if !vis[stats.index - cursor.index]{
+                res.push(top.get_data());
             } 
             if index == 0 {
                 break;
@@ -156,9 +178,10 @@ impl<O> Client<O> for MerkleDag<O>
 }
 
 
-impl<O> MerkleDag<O> 
+impl<O, N> MerkleDag<O, N> 
     where O: Clone, O: Debug, O:Hash, O:PartialEq,
-          O:Serialize, O:for<'de> Deserialize<'de>
+          O:Serialize, O:for<'de> Deserialize<'de>,
+          N: Node<O, Key = Vec<u8>, Hash=Vec<u8>>, N: std::fmt::Debug
 {
     //------------------------- HELPER FUNCTIONS -----------------------------
 
@@ -172,10 +195,10 @@ impl<O> MerkleDag<O>
         return self.top_layer;
     }
 
-    pub(crate) fn get_node(&self, id: &u64) -> Option<Arc<MerkleNode<O>>> {
+   pub(crate) fn get_node(&self, id: &Vec<u8>) -> Option<(Arc<N>, Niceties)> {
         match self.dag.get(id){
             Some(x) => {
-                let n:Arc<MerkleNode<O>> = (*x.value()).clone();
+                let n:(Arc<N>, Niceties) = (*x.value()).clone();
                 Some(n)
             },
             None => None
@@ -183,13 +206,13 @@ impl<O> MerkleDag<O>
     }
 
     /// get the head nodes of the dag
-    pub fn get_heads(&self) -> Vec<u64> {
+    pub fn get_heads(&self) -> Vec<Vec<u8>> {
         return self.heads.iter().map(|r| r.key().clone()).collect();
     }
 
     //------------------------- SPEC IMPLEMENTATION -----------------------------
-    pub fn insert_node(&mut self, node:MerkleNode<O>, opt_cursor: Option<QueryCursor>)
-        -> io::Result<(Arc<MerkleNode<O>>, QueryCursor)>
+    /*pub fn insert_node(&mut self, node:MerkleNode<O, Niceties>, opt_cursor: Option<QueryCursor>)
+        -> io::Result<(Arc<MerkleNode<O, Niceties>>, QueryCursor)>
     {
         let mut cursor = match opt_cursor {
             None => QueryCursor::new(),
@@ -206,7 +229,7 @@ impl<O> MerkleDag<O>
                             "Not all parents of the node are in the Dag"));
                 }
                 Some(node) => {
-                    layer = cmp::max(layer, node.layer);
+                    layer = cmp::max(layer, node.niceties.layer);
                 }
             }
             self.heads.remove(parent_hash);
@@ -239,17 +262,18 @@ impl<O> MerkleDag<O>
     /// - Space: $O(V)$
     /// where $V$ is number of vertices of the graph and 
     /// $E$ the number of edges of the graph
-    pub fn linearize(&self) -> Vec<MerkleNode<O>> {
+    pub fn linearize(&self) -> Vec<MerkleNode<O, Niceties>> {
         self.topo.iter()
             .map(|arc| MerkleNode::clone(&*arc))
             .collect()
-    }
+    }*/
 }
 
 
-impl<O>Debug for MerkleDag<O> 
-    where O: Clone, O:Debug, O:Hash, O:PartialEq,
-          O:Serialize, O:for<'de> Deserialize<'de>
+impl<O, N> MerkleDag<O, N> 
+  where O: Clone, O: Debug, O:Hash, O:PartialEq,
+        O:Serialize, O:for<'de> Deserialize<'de>,
+        N: Node<O, Key = Vec<u8>, Hash=Vec<u8>>, N: std::fmt::Debug
 {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.debug_struct("Merkle Dag")

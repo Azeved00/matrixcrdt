@@ -8,7 +8,6 @@ use matrix_sdk::{
     event_handler::Ctx,
     ruma::events::macros::EventContent,
     Room,  RoomState,
-    Client,
     ruma::api::client::room::Visibility,
     ruma::api::client::room::create_room::v3::{
         RoomPreset,
@@ -19,10 +18,14 @@ use matrix_sdk::{
 use tracing_subscriber::filter::EnvFilter;
 use tracing::{info, error, info_span};
 
-use auth_crdt::{auth_dag::AuthMerkleDag, auth_node::AuthNode, QueryCursor};
+use auth_crdt::{
+    traits::Client,
+    dag::MerkleDag,
+    node::AuthNode,
+    QueryCursor
+};
 
 type Data = Vec<u8>;
-type DagReference = Arc<RwLock<AuthMerkleDag<Sha3_256, Data>>>; 
 
 
 #[derive(Clone, Deserialize, Serialize, EventContent)]
@@ -39,7 +42,7 @@ pub struct AuthMatrixDag
 {
     room: Room,
     user: String,
-    dag: DagReference,
+    dag:  Arc<RwLock<MerkleDag<Vec<u8>, AuthNode<Vec<u8>>>>>,
 }
 
 /// Authenticated Dag type,
@@ -60,7 +63,7 @@ impl AuthMatrixDag
     /// you need to pass matrix's credentials as parameters
     pub async fn new(username: &str, password: &str) -> Self {
         info!("logging in");
-        let client = Client::builder()
+        let client = matrix_sdk::Client::builder()
             .homeserver_url(Self::HOMESERVER.to_string())
             .build()
             .await.expect("failed to connect to homeserver");
@@ -74,8 +77,8 @@ impl AuthMatrixDag
         info!("logged in as {username}");
 
 
-        let dag = AuthMerkleDag::new(password.into());
-        let context: DagReference = Arc::new(RwLock::new(dag));
+        let dag = MerkleDag::new(password.into());
+        let context = Arc::new(RwLock::new(dag));
         client.add_event_handler_context(Arc::clone(&context));
         client.add_event_handler(self::map_on_update);
 
@@ -110,9 +113,9 @@ impl AuthMatrixDag
     pub async fn send_update(&mut self, cmd: Data, c: Option<QueryCursor>) 
         -> std::io::Result<QueryCursor> 
     {
-        let (node, cursor) = {
+        let node = {
             let mut dag = self.dag.write().await;
-            dag.insert(cmd, c).expect("failed to add node to DAG")
+            dag.insert(cmd).expect("failed to add node to DAG")
         };
 
         let content = UpdateEventContent {
@@ -142,7 +145,7 @@ impl AuthMatrixDag
     {
         info!("Starting query");
         let map = self.dag.read().await;
-        let (res, cursor) = map.query(cursor.clone());
+        let res = map.query();
         return (res, cursor);
     }
 

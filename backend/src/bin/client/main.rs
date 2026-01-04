@@ -7,9 +7,9 @@ use std::time::Instant;
 use std::cmp;
 use serde_json;
 
-use auth_crdt::{AuthDag, QueryCursor};
-use auth_crdt::AuthClient;
-use auth_crdt::AuthReplica;
+use auth_crdt::QueryCursor;
+use auth_crdt::traits::Client;
+use auth_crdt::AuthDag;
 #[cfg(feature = "bench")]
 use auth_crdt::common::logger::LogFile;
 use auth_crdt::common::message::{Message, Command}; 
@@ -19,7 +19,7 @@ use tracing::{info, debug, error, info_span};
 
 struct Context {
     pub clock: u64,
-    pub dag: Arc<RwLock<AuthClient>>,
+    pub dag: Arc<RwLock<AuthDag>>,
     pub addr: SocketAddr,
 #[cfg(feature = "bench")]
     pub log_file: LogFile,
@@ -66,11 +66,11 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let mut dag = ctx.dag.write().unwrap();
 #[cfg(feature = "bench")]
             let start = Instant::now();
-            let res = dag.insert(message.message, Some(ctx.cursor.clone()));
+            let res = dag.insert(message.message);
             debug!("Dag Length: {:?}", dag.len());
 
             match res {
-                Ok((_, cursor)) => {ctx.cursor = cursor;},
+                Ok(_) => {},
                 Err(_err) => {
                     error!("Error when updating: {}", _err);
                     return Message::new(Command::Error, ctx.clock);
@@ -92,12 +92,11 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
 #[cfg(feature = "bench")]
             let start = Instant::now();
             debug!("Cursor {:?}", ctx.cursor);
-            debug!("Heads: {:?}", dag.get_dag().get_heads());
+            debug!("Heads: {:?}", dag.get_heads());
 
-            let (change_array, cursor) = dag.query(Some(ctx.cursor.clone()));
+            let change_array = dag.query();
 
             debug!("Changes: {:?}", change_array.len());
-            ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
             let time = start.elapsed();
@@ -114,7 +113,7 @@ fn process_message(ctx: &mut Context, message: Message) -> Message {
             let dag = ctx.dag.read().unwrap();
 #[cfg(feature = "bench")]
             let start = Instant::now();
-            let (change_array, _cursor) = dag.query(Some(ctx.cursor.clone()));
+            let change_array = dag.query();
             //ctx.cursor = cursor;
 
 #[cfg(feature = "bench")]
@@ -165,7 +164,7 @@ fn run_server() -> std::io::Result<()>{
     let listener = TcpListener::bind("127.0.0.1:20076")?;
 
     info!("WebSocket Server running on ws://127.0.0.1:20076");
-    let dag = AuthDag::new("My super secret Key".to_string().into());
+    let dag = AuthDag::new("My super secret Key".into(), 0);
     let dag_ref = Arc::new(RwLock::new(dag));
 
 
